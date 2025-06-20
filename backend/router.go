@@ -2,11 +2,7 @@ package main
 
 import (
 	"database/sql"
-	"embed"
-	"io/fs"
-	"net/http"
-	"os"
-	"path/filepath"
+	_ "embed"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/db"
@@ -41,7 +37,7 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 
 	// Setup API routes
 	api := e.Group("/api")
-	
+
 	dbChecker := db.NewDBHealthChecker(database)
 	healthHandler := handler.NewHandler(dbChecker)
 
