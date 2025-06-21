@@ -1,5 +1,5 @@
 <template>
-  <div :class="$style.container">
+  <div :class="$style.container" @click="$emit('click')">
     <Icon v-if="icon" :icon="icon" :class="$style.icon" />
     <span v-else :class="$style.text">{{ text }}</span>
   </div>
@@ -12,6 +12,10 @@ defineProps<{
   text?: string;
   icon?: string;
 }>();
+
+defineEmits<{
+  click: [];
+}>();
 </script>
 
 <style module>
@@ -23,6 +27,17 @@ defineProps<{
   justify-content: center;
   align-items: center;
   background-color: #446688;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.container:hover {
+  background-color: #5577aa;
+  transform: scale(1.05);
+}
+
+.container:active {
+  transform: scale(0.95);
 }
 
 .text {
