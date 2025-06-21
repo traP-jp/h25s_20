@@ -1,9 +1,19 @@
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, watch } from "vue";
 
 const props = defineProps<{ id?: string; size?: number }>();
 
 const imageError = ref(false);
+
+watch(
+  () => props.id,
+  (newId) => {
+    if (newId) {
+      imageError.value = false; // Reset error state when id changes
+    }
+  },
+  { immediate: true }
+);
 
 const imageUrl = computed(() => {
   return imageError.value
