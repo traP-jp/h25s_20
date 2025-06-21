@@ -29,13 +29,13 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 	}
 
 	var mockPlayer = domain.Player{
-		ID:   "1",
-		Name: "testuser",
+		ID:       "1",
+		UserName: "testuser",
 	}
 
 	switch req.Action {
 	case models.JOIN:
-		_, err := h.roomUsecase.AddPlayerToRoom(roomId, mockPlayer) 
+		_, err := h.roomUsecase.AddPlayerToRoom(roomId, mockPlayer)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, "Failed to add player to room")
 		}

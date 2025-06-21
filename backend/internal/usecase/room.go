@@ -18,10 +18,10 @@ func NewRoomUsecase() *RoomUsecase {
 		rooms: make(map[int]*domain.Room),
 		mutex: sync.RWMutex{},
 	}
-	
+
 	// 10個のroomを初期化
 	usecase.initializeRooms()
-	
+
 	return usecase
 }
 
@@ -44,15 +44,15 @@ func (r *RoomUsecase) initializeRooms() {
 func (r *RoomUsecase) GetRooms() []models.Room {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	
+
 	var rooms []models.Room
 	for _, domainRoom := range r.rooms {
 		// domain.RoomからAPI用のmodels.Roomに変換
 		users := make([]string, len(domainRoom.Players))
 		for i, player := range domainRoom.Players {
-			users[i] = player.Name // Playerに Name フィールドがあると仮定
+			users[i] = player.UserName // Playerに Name フィールドがあると仮定
 		}
-		
+
 		apiRoom := models.Room{
 			RoomId:   domainRoom.ID,
 			RoomName: domainRoom.Name,
@@ -61,7 +61,7 @@ func (r *RoomUsecase) GetRooms() []models.Room {
 		}
 		rooms = append(rooms, apiRoom)
 	}
-	
+
 	return rooms
 }
 
@@ -69,31 +69,31 @@ func (r *RoomUsecase) GetRooms() []models.Room {
 func (r *RoomUsecase) GetRoomByID(roomID int) (*domain.Room, error) {
 	r.mutex.RLock()
 	defer r.mutex.RUnlock()
-	
+
 	room, exists := r.rooms[roomID]
 	if !exists {
 		return nil, fmt.Errorf("room with ID %d not found", roomID)
 	}
-	
-	return room, nil
-} 
 
-func (r *RoomUsecase) AddPlayerToRoom(roomID int, player domain.Player) (*domain.Room, error) {	
+	return room, nil
+}
+
+func (r *RoomUsecase) AddPlayerToRoom(roomID int, player domain.Player) (*domain.Room, error) {
 	r.mutex.Lock()
 	defer r.mutex.Unlock()
-	
+
 	room, exists := r.rooms[roomID]
 	if !exists {
 		return nil, fmt.Errorf("room with ID %d not found", roomID)
 	}
-	
+
 	// プレイヤーがすでに存在するかチェック
 	for _, p := range room.Players {
 		if p.ID == player.ID {
 			return nil, fmt.Errorf("player with ID %s already exists in room %d", player.ID, roomID)
 		}
 	}
-	
+
 	room.Players = append(room.Players, player)
 	return room, nil
 }
