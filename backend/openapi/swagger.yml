@@ -115,6 +115,22 @@ paths:
           description: Conflict (The board state has been updated by another user)
         '500':
           description: Internal server error
+  /rooms/result:
+    get:
+      summary: Get room results
+      responses:
+        '200':
+          description: A list of user scores for the room
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoomResultItem'
+        '403':
+          description: Forbidden (e.g., user not in a room)
+        '500':
+          description: Internal server error
 
 components:
   schemas:
@@ -138,6 +154,19 @@ components:
         - content
         - version
         - gainScore
+    RoomResultItem:
+      type: object
+      properties:
+        user:
+          type: string
+          description: "username"
+          example: "testuser"
+        score:
+          type: integer
+          example: 120
+      required:
+        - user
+        - score
     UserCreate:
       type: object
       properties:

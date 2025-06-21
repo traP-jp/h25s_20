@@ -57,3 +57,17 @@ func (h *Handler) PostRoomsFormulas(c echo.Context) error {
 
 	return c.JSON(http.StatusOK, mockBoard)
 }
+
+func (h *Handler) GetRoomsResult(c echo.Context) error {
+	results := []models.RoomResultItem{
+		{
+			User:  "testuser1",
+			Score: 120,
+		},
+		{
+			User:  "testuser2",
+			Score: 100,
+		},
+	}
+	return c.JSON(http.StatusOK, results)
+}

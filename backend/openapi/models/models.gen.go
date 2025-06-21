@@ -28,6 +28,14 @@ type Room struct {
 	Users    []string `json:"users"`
 }
 
+// RoomResultItem defines model for RoomResultItem.
+type RoomResultItem struct {
+	Score int `json:"score"`
+
+	// User username
+	User string `json:"user"`
+}
+
 // UserCreate defines model for UserCreate.
 type UserCreate struct {
 	// Password SHA256 hashed password
