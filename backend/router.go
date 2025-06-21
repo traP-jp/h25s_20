@@ -6,6 +6,8 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/db"
+	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/room"
+	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/websocket"
 	"github.com/kaitoyama/kaitoyama-server-template/internal/interface/handler"
 	"github.com/kaitoyama/kaitoyama-server-template/openapi"
 	"github.com/labstack/echo/v4"
@@ -38,11 +40,19 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	// Setup API routes
 	api := e.Group("/api")
 
+	// Initialize WebSocket manager
+	wsManager := websocket.NewManager()
+	roomManager := room.NewManager()
+
 	dbChecker := db.NewDBHealthChecker(database)
-	healthHandler := handler.NewHandler(dbChecker)
+	healthHandler := handler.NewHandler(dbChecker, wsManager, roomManager)
 
 	// Register API handlers with /api prefix
 	openapi.RegisterHandlersWithBaseURL(api, healthHandler, "")
+
+	// Add WebSocket routes
+	api.GET("/ws", healthHandler.HandleWebSocket)
+	api.GET("/ws/stats", healthHandler.GetWebSocketStats)
 
 	return e
 }
