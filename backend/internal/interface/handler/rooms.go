@@ -47,6 +47,12 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"error": "Failed to update ready status: " + err.Error(),
 			})
 		}
+		// WebSocketでルーム全員に通知
+		h.WebSocketHandler.BroadcastToRoom(roomId, "player_ready", map[string]interface{}{
+			"user_id":   mockPlayer.ID,
+			"user_name": mockPlayer.UserName,
+			"room_id":   roomId,
+		})
 		return c.NoContent(http.StatusNoContent)
 
 	case models.CANCEL:

@@ -9,6 +9,7 @@ import (
 type Handler struct {
 	healthUsecase usecase.HealthUsecase
 	roomUsecase   *usecase.RoomUsecase
+	WebSocketHandler *WebSocketHandler // 追加
 }
 
 func (h *Handler) GetHealth(c echo.Context) error {
