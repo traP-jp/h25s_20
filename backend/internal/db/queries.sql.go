@@ -10,12 +10,38 @@ import (
 	"database/sql"
 )
 
+const CreateScore = `-- name: CreateScore :execresult
+INSERT INTO score (user_id,value) VALUES(?,?)
+`
+
+type CreateScoreParams struct {
+	UserID int32 `json:"user_id"`
+	Value  int32 `json:"value"`
+}
+
+func (q *Queries) CreateScore(ctx context.Context, arg CreateScoreParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, CreateScore, arg.UserID, arg.Value)
+}
+
 const CreateUser = `-- name: CreateUser :execresult
 INSERT INTO user (username) VALUES (?)
 `
 
 func (q *Queries) CreateUser(ctx context.Context, username string) (sql.Result, error) {
 	return q.db.ExecContext(ctx, CreateUser, username)
+}
+
+const CreateUserWithPassword = `-- name: CreateUserWithPassword :execresult
+INSERT INTO user (username,password_hash) VALUES(?,?)
+`
+
+type CreateUserWithPasswordParams struct {
+	Username     string         `json:"username"`
+	PasswordHash sql.NullString `json:"password_hash"`
+}
+
+func (q *Queries) CreateUserWithPassword(ctx context.Context, arg CreateUserWithPasswordParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, CreateUserWithPassword, arg.Username, arg.PasswordHash)
 }
 
 const DeleteUser = `-- name: DeleteUser :exec
@@ -27,19 +53,62 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 	return err
 }
 
+const GetTop10Scores = `-- name: GetTop10Scores :many
+SELECT user.username,score.value FROM score JOIN user ON score.user_id = user.id ORDER BY value DESC limit 10
+`
+
+type GetTop10ScoresRow struct {
+	Username string `json:"username"`
+	Value    int32  `json:"value"`
+}
+
+func (q *Queries) GetTop10Scores(ctx context.Context) ([]GetTop10ScoresRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetTop10Scores)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTop10ScoresRow{}
+	for rows.Next() {
+		var i GetTop10ScoresRow
+		if err := rows.Scan(&i.Username, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const GetUser = `-- name: GetUser :one
-SELECT id, username FROM user WHERE id = ?
+SELECT id, username, password_hash FROM user WHERE id = ?
 `
 
 func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 	row := q.db.QueryRowContext(ctx, GetUser, id)
 	var i User
-	err := row.Scan(&i.ID, &i.Username)
+	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
 	return i, err
 }
 
+const GetUserIDByUsername = `-- name: GetUserIDByUsername :one
+SELECT id FROM user WHERE username = ?
+`
+
+func (q *Queries) GetUserIDByUsername(ctx context.Context, username string) (int32, error) {
+	row := q.db.QueryRowContext(ctx, GetUserIDByUsername, username)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const ListUsers = `-- name: ListUsers :many
-SELECT id, username FROM user
+SELECT id, username, password_hash FROM user
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -51,7 +120,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	items := []User{}
 	for rows.Next() {
 		var i User
-		if err := rows.Scan(&i.ID, &i.Username); err != nil {
+		if err := rows.Scan(&i.ID, &i.Username, &i.PasswordHash); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

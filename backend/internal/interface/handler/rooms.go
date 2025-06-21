@@ -3,26 +3,23 @@ package handler
 import (
 	"net/http"
 
+	"github.com/kaitoyama/kaitoyama-server-template/internal/domain"
 	"github.com/kaitoyama/kaitoyama-server-template/openapi/models"
 	"github.com/labstack/echo/v4"
 )
 
 func (h *Handler) GetRooms(c echo.Context) error {
-	rooms := []models.Room{
-		{
-			RoomId:   1,
-			RoomName: "Room 1",
-			Users:    []string{"player1", "player2"},
-			IsOpened: true,
-		},
-		{
-			RoomId:   2,
-			RoomName: "Room 2",
-			Users:    []string{"player3", "player4"},
-			IsOpened: false,
-		},
+	var res []models.Room
+	rooms := h.roomUsecase.GetRooms()
+	for _, room := range rooms {
+		res = append(res, models.Room{
+			RoomId:   room.RoomId,
+			RoomName: room.RoomName,
+			Users:    room.Users,
+			IsOpened: room.IsOpened,
+		})
 	}
-	return c.JSON(http.StatusOK, rooms)
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
@@ -31,8 +28,21 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		return c.JSON(http.StatusBadRequest, "Invalid request body")
 	}
 
+	var mockPlayer = domain.Player{
+		ID:       "1",
+		UserName: "testuser",
+	}
+
 	switch req.Action {
-	case models.JOIN, models.READY, models.CANCEL, models.START:
+	case models.JOIN:
+		_, err := h.roomUsecase.AddPlayerToRoom(roomId, mockPlayer)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, "Failed to add player to room")
+		}
+
+		return c.NoContent(http.StatusNoContent)
+
+	case models.READY, models.CANCEL, models.START:
 		// This is a simple mock that always returns success for valid actions.
 		// It does not implement stateful logic for errors like 403 or 409.
 		return c.NoContent(http.StatusNoContent)
