@@ -56,6 +56,7 @@ type PostRoomsRoomIdActionsJSONBodyAction string
 // PostRoomsRoomIdFormulasJSONBody defines parameters for PostRoomsRoomIdFormulas.
 type PostRoomsRoomIdFormulasJSONBody struct {
 	Formula string `json:"formula"`
+	Version int    `json:"version"`
 }
 
 // PostRoomsRoomIdActionsJSONRequestBody defines body for PostRoomsRoomIdActions for application/json ContentType.

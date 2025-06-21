@@ -24,9 +24,26 @@ type Manager struct {
 	mutex       sync.RWMutex
 }
 
+// 後方互換性のため残す（非推奨）
 type NotificationMessage struct {
 	Event   string      `json:"event"`
 	Content interface{} `json:"content"`
+}
+
+// 非推奨: 新しいWebSocketEventとイベント固有の構造体を使用してください
+type StandardEventContent struct {
+	UserID   int         `json:"user_id,omitempty"`
+	UserName string      `json:"user_name,omitempty"`
+	RoomID   int         `json:"room_id,omitempty"`
+	Message  string      `json:"message,omitempty"`
+	Data     interface{} `json:"data,omitempty"`
+}
+
+// 非推奨: 新しいBoardUpdateEventContentを使用してください
+type BoardUpdateContent struct {
+	StandardEventContent
+	Board     interface{} `json:"board"`
+	GainScore int         `json:"gain_score"`
 }
 
 func NewManager() *Manager {
@@ -165,36 +182,11 @@ func (m *Manager) leaveRoomInternal(client *Client) {
 	client.RoomID = nil
 }
 
-// 全クライアントにメッセージを送信
-func (m *Manager) BroadcastToAll(message NotificationMessage) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-
-	data, err := json.Marshal(message)
-	if err != nil {
-		log.Error().Err(err).Msg("Failed to marshal message")
-		return
-	}
-
-	for clientID, client := range m.clients {
-		go m.sendToClient(clientID, client, data)
-	}
-
-	log.Info().
-		Str("event", message.Event).
-		Int("client_count", len(m.clients)).
-		Msg("Broadcasted message to all clients")
-}
-
-// 特定のroomの参加者全員にメッセージを送信
-func (m *Manager) BroadcastToRoom(roomID int, message NotificationMessage) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
-
-	clients, exists := m.roomClients[roomID]
-	if !exists {
-		log.Warn().Int("room_id", roomID).Msg("No clients in room")
-		return
+// 全クライアントに通知
+func (m *Manager) NotifyAll(event string, content interface{}) {
+	message := NotificationMessage{
+		Event:   event,
+		Content: content,
 	}
 
 	data, err := json.Marshal(message)
@@ -202,22 +194,30 @@ func (m *Manager) BroadcastToRoom(roomID int, message NotificationMessage) {
 		log.Error().Err(err).Msg("Failed to marshal message")
 		return
 	}
+
+	m.mutex.RLock()
+	clients := make([]*Client, 0, len(m.clients))
+	for _, client := range m.clients {
+		clients = append(clients, client)
+	}
+	m.mutex.RUnlock()
 
 	for _, client := range clients {
 		go m.sendToClient(client.ID, client, data)
 	}
 
 	log.Info().
-		Str("event", message.Event).
-		Int("room_id", roomID).
+		Str("event", event).
 		Int("client_count", len(clients)).
-		Msg("Broadcasted message to room clients")
+		Msg("Broadcasted message to all clients")
 }
 
-// room未参加者全員にメッセージを送信
-func (m *Manager) BroadcastToNonRoomMembers(message NotificationMessage) {
-	m.mutex.RLock()
-	defer m.mutex.RUnlock()
+// 特定roomの参加者全員に通知
+func (m *Manager) NotifyRoom(roomID int, event string, content interface{}) {
+	message := NotificationMessage{
+		Event:   event,
+		Content: content,
+	}
 
 	data, err := json.Marshal(message)
 	if err != nil {
@@ -225,22 +225,73 @@ func (m *Manager) BroadcastToNonRoomMembers(message NotificationMessage) {
 		return
 	}
 
-	count := 0
-	for clientID, client := range m.clients {
-		if client.RoomID == nil {
-			go m.sendToClient(clientID, client, data)
-			count++
-		}
+	m.mutex.RLock()
+	clients, exists := m.roomClients[roomID]
+	if !exists {
+		m.mutex.RUnlock()
+		log.Warn().Int("room_id", roomID).Msg("No clients in room")
+		return
+	}
+	// コピーを作成
+	clientsCopy := make([]*Client, len(clients))
+	copy(clientsCopy, clients)
+	m.mutex.RUnlock()
+
+	for _, client := range clientsCopy {
+		go m.sendToClient(client.ID, client, data)
 	}
 
 	log.Info().
-		Str("event", message.Event).
-		Int("client_count", count).
+		Str("event", event).
+		Int("room_id", roomID).
+		Int("client_count", len(clientsCopy)).
+		Msg("Broadcasted message to room clients")
+}
+
+// room未参加者全員に通知
+func (m *Manager) NotifyNonRoomMembers(event string, content interface{}) {
+	message := NotificationMessage{
+		Event:   event,
+		Content: content,
+	}
+
+	data, err := json.Marshal(message)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal message")
+		return
+	}
+
+	m.mutex.RLock()
+	clients := make([]*Client, 0)
+	for _, client := range m.clients {
+		if client.RoomID == nil {
+			clients = append(clients, client)
+		}
+	}
+	m.mutex.RUnlock()
+
+	for _, client := range clients {
+		go m.sendToClient(client.ID, client, data)
+	}
+
+	log.Info().
+		Str("event", event).
+		Int("client_count", len(clients)).
 		Msg("Broadcasted message to non-room clients")
 }
 
-// 特定のユーザーにメッセージを送信
-func (m *Manager) SendToUser(userID int, message NotificationMessage) error {
+// 特定ユーザーに通知
+func (m *Manager) NotifyUser(userID int, event string, content interface{}) error {
+	message := NotificationMessage{
+		Event:   event,
+		Content: content,
+	}
+
+	data, err := json.Marshal(message)
+	if err != nil {
+		return err
+	}
+
 	m.mutex.RLock()
 	client, exists := m.userClients[userID]
 	m.mutex.RUnlock()
@@ -250,19 +301,68 @@ func (m *Manager) SendToUser(userID int, message NotificationMessage) error {
 		return nil
 	}
 
-	data, err := json.Marshal(message)
-	if err != nil {
-		return err
-	}
-
 	go m.sendToClient(client.ID, client, data)
 
 	log.Info().
 		Int("user_id", userID).
-		Str("event", message.Event).
+		Str("event", event).
 		Msg("Sent message to user")
 
 	return nil
+}
+
+// 低レベルAPI: 複数クライアントに直接メッセージ送信
+func (m *Manager) SendToClients(clients []*Client, data []byte) {
+	for _, client := range clients {
+		go m.sendToClient(client.ID, client, data)
+	}
+}
+
+// 低レベルAPI: 特定クライアントの取得
+func (m *Manager) GetAllClients() []*Client {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	clients := make([]*Client, 0, len(m.clients))
+	for _, client := range m.clients {
+		clients = append(clients, client)
+	}
+	return clients
+}
+
+func (m *Manager) GetClientsInRoom(roomID int) []*Client {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	clients, exists := m.roomClients[roomID]
+	if !exists {
+		return []*Client{}
+	}
+
+	// コピーを返す
+	result := make([]*Client, len(clients))
+	copy(result, clients)
+	return result
+}
+
+func (m *Manager) GetClientsNotInRoom() []*Client {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	clients := make([]*Client, 0)
+	for _, client := range m.clients {
+		if client.RoomID == nil {
+			clients = append(clients, client)
+		}
+	}
+	return clients
+}
+
+func (m *Manager) GetClientByUser(userID int) *Client {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	return m.userClients[userID]
 }
 
 func (m *Manager) sendToClient(clientID string, client *Client, data []byte) {
@@ -288,4 +388,102 @@ func (m *Manager) GetRoomClientCount(roomID int) int {
 		return 0
 	}
 	return len(clients)
+}
+
+// 接続状況の取得
+func (m *Manager) GetConnectionStats() map[string]interface{} {
+	return map[string]interface{}{
+		"total_connected": m.GetClientCount(),
+	}
+}
+
+// 特定roomの接続状況
+func (m *Manager) GetRoomConnectionStats(roomID int) map[string]interface{} {
+	return map[string]interface{}{
+		"room_id":         roomID,
+		"connected_count": m.GetRoomClientCount(roomID),
+	}
+}
+
+// 新しい統一されたイベント送信メソッド群
+
+// SendEvent sends a structured WebSocketEvent to all clients
+func (m *Manager) SendEvent(event WebSocketEvent) {
+	data, err := json.Marshal(event)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal WebSocketEvent")
+		return
+	}
+
+	m.mutex.RLock()
+	clients := make([]*Client, 0, len(m.clients))
+	for _, client := range m.clients {
+		clients = append(clients, client)
+	}
+	m.mutex.RUnlock()
+
+	for _, client := range clients {
+		go m.sendToClient(client.ID, client, data)
+	}
+
+	log.Info().
+		Str("event", event.Event).
+		Int("client_count", len(clients)).
+		Msg("Sent structured event to all clients")
+}
+
+// SendEventToRoom sends a structured WebSocketEvent to room participants
+func (m *Manager) SendEventToRoom(roomID int, event WebSocketEvent) {
+	data, err := json.Marshal(event)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal WebSocketEvent")
+		return
+	}
+
+	m.mutex.RLock()
+	clients, exists := m.roomClients[roomID]
+	if !exists {
+		m.mutex.RUnlock()
+		log.Warn().Int("room_id", roomID).Msg("No clients in room")
+		return
+	}
+	clientsCopy := make([]*Client, len(clients))
+	copy(clientsCopy, clients)
+	m.mutex.RUnlock()
+
+	for _, client := range clientsCopy {
+		go m.sendToClient(client.ID, client, data)
+	}
+
+	log.Info().
+		Str("event", event.Event).
+		Int("room_id", roomID).
+		Int("client_count", len(clientsCopy)).
+		Msg("Sent structured event to room clients")
+}
+
+// SendEventToUser sends a structured WebSocketEvent to a specific user
+func (m *Manager) SendEventToUser(userID int, event WebSocketEvent) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	m.mutex.RLock()
+	client, exists := m.userClients[userID]
+	if !exists {
+		m.mutex.RUnlock()
+		log.Warn().Int("user_id", userID).Msg("User not connected via WebSocket")
+		return nil
+	}
+	m.mutex.RUnlock()
+
+	go m.sendToClient(client.ID, client, data)
+
+	log.Info().
+		Str("event", event.Event).
+		Int("user_id", userID).
+		Msg("Sent structured event to user")
+
+	return nil
 }
