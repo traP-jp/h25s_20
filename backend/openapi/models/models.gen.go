@@ -11,6 +11,15 @@ const (
 	START  PostRoomsActionsJSONBodyAction = "START"
 )
 
+// Board defines model for Board.
+type Board struct {
+	Content   []int `json:"content"`
+	GainScore int   `json:"gainScore"`
+
+	// Version The new version of the board state
+	Version int `json:"version"`
+}
+
 // Room defines model for Room.
 type Room struct {
 	IsOpened bool     `json:"isOpened"`
@@ -34,8 +43,16 @@ type PostRoomsActionsJSONBody struct {
 // PostRoomsActionsJSONBodyAction defines parameters for PostRoomsActions.
 type PostRoomsActionsJSONBodyAction string
 
+// PostRoomsFormulasJSONBody defines parameters for PostRoomsFormulas.
+type PostRoomsFormulasJSONBody struct {
+	Formula string `json:"formula"`
+}
+
 // PostRoomsActionsJSONRequestBody defines body for PostRoomsActions for application/json ContentType.
 type PostRoomsActionsJSONRequestBody PostRoomsActionsJSONBody
+
+// PostRoomsFormulasJSONRequestBody defines body for PostRoomsFormulas for application/json ContentType.
+type PostRoomsFormulasJSONRequestBody PostRoomsFormulasJSONBody
 
 // PostUsersJSONRequestBody defines body for PostUsers for application/json ContentType.
 type PostUsersJSONRequestBody = UserCreate

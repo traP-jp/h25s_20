@@ -40,3 +40,20 @@ func (h *Handler) PostRoomsActions(c echo.Context) error {
 		return c.JSON(http.StatusBadRequest, "Invalid action.")
 	}
 }
+
+func (h *Handler) PostRoomsFormulas(c echo.Context) error {
+	var req models.PostRoomsFormulasJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid request body")
+	}
+
+	// This is a simple mock that always returns a fixed board state.
+	// It does not validate the formula or handle conflicts.
+	mockBoard := models.Board{
+		Content:   []int{1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4},
+		Version:   2,
+		GainScore: 10,
+	}
+
+	return c.JSON(http.StatusOK, mockBoard)
+}
