@@ -56,6 +56,5 @@ button:hover:not(:disabled) {
 #app {
   max-width: 360px;
   margin: 0 auto;
-  padding: 2rem;
   /* text-align: center; */
 }

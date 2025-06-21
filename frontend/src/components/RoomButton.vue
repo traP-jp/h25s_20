@@ -1,24 +1,22 @@
 <template>
-  <div :class="$style.container">
-    <div>
-      <button
-        :disabled="room.status === 'closed'"
-        @click="emit('click')"
-        :class="[
-          $style.button,
-          room.status === 'closed' ? $style.closed : $style.open,
-        ]"
-      >
-        <div>{{ room.name }}</div>
-        <div>ID: {{ room.id }}</div>
-        <div>Status: {{ room.status }}</div>
-      </button>
+  <button :disabled="room.status === 'closed'" @click="emit('click')" :class="$style.button">
+    <div :class="$style.name">{{ room.name }}</div>
+    <div :class="$style.icons">
+      <UserIcon
+        :class="$style.icon"
+        v-for="player in room.players.slice(0, 3)"
+        :key="player.id"
+        :id="player.id"
+        :size="20"
+      />
+      <div :class="$style.surplus" v-if="room.players.length > 3">+{{ room.players.length - 3 }}</div>
     </div>
-  </div>
+  </button>
 </template>
 
 <script setup lang="ts">
 import { defineProps, defineEmits } from "vue";
+import UserIcon from "@/components/UserIcon.vue";
 
 import type { Room } from "@/lib/types.ts";
 
@@ -32,33 +30,29 @@ const emit = defineEmits<{
 </script>
 
 <style module>
-.container {
-  width: 100%;
-  border: 1px solid #ccc;
-  border-radius: 4px;
-  text-align: left;
-  cursor: pointer;
+.name {
+  font-size: 24px;
 }
+
+.icons {
+  margin: 4px 0;
+  display: flex;
+  align-items: center;
+}
+
+.icon {
+  outline: white solid 2px;
+}
+
+.surplus {
+  margin-left: 6px;
+}
+
 .button {
-  width: 100%;
-  padding: 10px 20px;
-  border: none;
-  border-radius: 4px;
-  font-size: 16px;
-  transition: background-color 0.3s ease;
   display: flex;
   flex-direction: column;
-  align-items: flex-start;
+  align-items: center;
   text-align: left;
-}
-.open {
-  background-color: #4caf50;
-  cursor: pointer;
-}
-.closed {
-  background-color: #ccc;
-  opacity: 0.4;
-  color: #888;
-  cursor: not-allowed;
+  margin: 4px;
 }
 </style>
