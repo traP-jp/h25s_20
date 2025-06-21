@@ -25,16 +25,16 @@ export const roomData: Room[] = [
   {
     id: 3,
     name: "D",
-    status: "open",
+    status: "closed",
   },
   {
     id: 4,
     name: "E",
-    status: "open",
+    status: "closed",
   },
   {
     id: 5,
     name: "F",
-    status: "open",
+    status: "closed",
   },
 ];
