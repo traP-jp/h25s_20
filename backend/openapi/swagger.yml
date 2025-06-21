@@ -113,10 +113,14 @@ paths:
             schema:
               type: object
               properties:
+                version:
+                  type: integer
+                  example: 1
                 formula:
                   type: string
                   example: "1+2*3-4"
               required:
+                - version
                 - formula
       responses:
         '200':
