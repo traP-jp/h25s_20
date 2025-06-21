@@ -11,19 +11,14 @@
       />
     </div>
 
-    <MyInfo
-      icon="/images/player-self.png"
-      name="Me"
-      :score="50"
-      :time="'10:00'"
-    />
+    <MyInfo icon="/images/player-self.png" name="Me" :score="50" :time="'10:00'" />
 
     <div :class="$style.board">
-      <MainGameBoard />
+      <MainGameBoard v-model:board="board" />
     </div>
 
     <div :class="$style.inputbox">
-      <MathInput />
+      <MathInput v-model:board="board" />
     </div>
   </div>
 </template>
@@ -38,6 +33,8 @@ import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
 import MathInput from "@/components/playgame/MathInput.vue";
 import MyInfo from "@/components/playgame/MyInfo.vue";
 
+import { ref, watch } from "vue";
+
 const players = [
   { icon: "/images/player1.png", name: "Player 01", score: 30 },
   { icon: "/images/player2.png", name: "Player 02", score: 50 },
@@ -46,6 +43,12 @@ const players = [
 function handleRoomClick(room: Room) {
   console.log("Room clicked:", room);
 }
+
+const board = ref([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8]);
+
+watch(board, (newBoard) => {
+  console.log("Board updated:", newBoard);
+});
 </script>
 
 <style module>

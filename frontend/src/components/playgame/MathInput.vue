@@ -44,11 +44,14 @@
 <script setup lang="ts">
 import { ref, computed } from "vue";
 import MathInputButton from "./MathInputButton.vue";
+import { defineModel } from "vue";
 
 const expression = ref("");
 
 import { solvePoland } from "@/lib/solver/solvePoland";
 import { encodePoland } from "@/lib/solver/encodePoland";
+
+const board = defineModel<number[]>("board");
 
 const isCorrect = computed(() => {
   try {
@@ -62,22 +65,15 @@ const isCorrect = computed(() => {
 const addSymbol = (value: string) => {
   const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
 
-  console.log("last is 1-9: ", /[1-9]/.test(last));
-  console.log("last is operator: ", /[+\-*/]/.test(last));
-  console.log("last is open parenthesis: ", last === "(");
-  console.log("last is close parenthesis: ", last === ")");
-
-  console.log("value is 1-9: ", /[1-9]/.test(value));
-  console.log("value is operator: ", /[+\-*/]/.test(value));
-  console.log("value is open parenthesis: ", value === "(");
-  console.log("value is close parenthesis: ", value === ")");
-
-  // last が 1 〜 9 までの数字ならば（0を含まない）
   if (/[1-9]/.test(last)) {
     if (/[1-9]/.test(value)) {
       expression.value = expression.value.slice(0, -1) + value;
       return;
     } else if (/[+\-*/]/.test(value)) {
+      const numberCount = (expression.value.match(/[1-9]/g) || []).length;
+      if (numberCount >= 4) {
+        return;
+      }
       expression.value += value;
       return;
     }
@@ -149,7 +145,7 @@ const backspace = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: black;
 }
 
 .correct {
