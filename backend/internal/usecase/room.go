@@ -295,7 +295,7 @@ func (r *RoomUsecase) ApplyFormulaWithVersion(roomID int, playerID int, formula 
 	success, errMessage, matchCount := domain.AttemptMoveWithVersion(currentBoard, formula, submittedVersion)
 
 	if !success {
-		return nil, 0, fmt.Errorf(errMessage)
+		return nil, 0, fmt.Errorf("%s", errMessage)
 	}
 
 	// スコア計算: 消した組数 * 10点
