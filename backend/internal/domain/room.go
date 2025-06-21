@@ -49,13 +49,14 @@ func NewBoard() GameBoard {
 	gb := &GameBoard{
 		Version: 1,
 		Board:   make([][]int, size),
+		Size:    size,
 	}
 	//盤面の初期化
 	for i := range gb.Board {
 		gb.Board[i] = make([]int, size)
 	}
 	//盤面全体を1から9のランダムな整数で埋める
-	for i := range gb.Size {
+	for i := 0; i < size; i++ {
 		gb.PopulateRow(i)
 	}
 	return *gb

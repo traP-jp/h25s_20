@@ -8,21 +8,17 @@ import (
 )
 
 func (h *Handler) GetRooms(c echo.Context) error {
-	rooms := []models.Room{
-		{
-			RoomId:   1,
-			RoomName: "Room 1",
-			Users:    []string{"player1", "player2"},
-			IsOpened: true,
-		},
-		{
-			RoomId:   2,
-			RoomName: "Room 2",
-			Users:    []string{"player3", "player4"},
-			IsOpened: false,
-		},
+	var res []models.Room
+	rooms := h.roomUsecase.GetRooms()
+	for _, room := range rooms {
+		res = append(res, models.Room{
+			RoomId:   room.RoomId,
+			RoomName: room.RoomName,
+			Users:    room.Users,
+			IsOpened: room.IsOpened,
+		})
 	}
-	return c.JSON(http.StatusOK, rooms)
+	return c.JSON(http.StatusOK, res)
 }
 
 func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {

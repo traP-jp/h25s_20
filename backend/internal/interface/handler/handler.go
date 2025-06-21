@@ -8,6 +8,7 @@ import (
 
 type Handler struct {
 	healthUsecase usecase.HealthUsecase
+	roomUsecase   *usecase.RoomUsecase
 }
 
 func (h *Handler) GetHealth(c echo.Context) error {
@@ -17,5 +18,6 @@ func (h *Handler) GetHealth(c echo.Context) error {
 func NewHandler(dbChecker domain.DatabaseHealthChecker) *Handler {
 	return &Handler{
 		healthUsecase: *usecase.NewHealthUsecase(dbChecker),
+		roomUsecase:   usecase.NewRoomUsecase(),
 	}
 }
