@@ -1,83 +1,64 @@
-# Makefile
-
-# Default target
-all: build
-
-# Install dependencies
-install:
-	go mod tidy
+.PHONY: build run test clean db-up db-down migrate generate-sqlc
 
 # Build the application
 build:
-	go build -o bin/main main.go
-
-# Run the application
-run:
-	go run main.go
-
-# Run database migrations
-migrate:
-	@echo "Applying database migrations..."
-	mysql -u root -p < db/schema.sql
-
-# Clean build artifacts
-clean:
-	rm -rf bin/ tmp/
-
-# Generate code from OpenAPI spec
-generate:
-	@echo "Generating code from OpenAPI spec..."
-	oapi-codegen -config tools/models.cfg.yml openapi/swagger.yml
-	oapi-codegen -config tools/server.cfg.yml openapi/swagger.yml
+	go build -o main .
 
 # Run tests
 test:
-	go test ./...
+	go test -v ./...
 
-# Build for production
-build-prod:
-	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/main main.go
+# Clean build artifacts
+clean:
+	rm -f main
+	rm -rf tmp
 
-# Docker build
-docker-build:
-	docker build -t h25s_20-backend .
+# Start docker containers
+db-up:
+	docker compose up -d
 
-# Docker run
-docker-run:
-	docker-compose up -d
+# Stop docker containers
+db-down:
+	docker compose down
 
-# Docker stop
-docker-stop:
-	docker-compose down
+# Apply database migrations using sqldef
+migrate-dry-run:
+	mysqldef -h 127.0.0.1 -P 3306 -u user -ppassword template_db --dry-run < db/schema.sql
 
-# Run with auto-reload for development
-dev:
-	go run main.go
+migrate:
+	mysqldef -h 127.0.0.1 -P 3306 -u user -ppassword template_db < db/schema.sql
+
+# Generate SQL code using sqlc
+generate-sqlc:
+	sqlc generate
+
+# Wait for database to be ready
+wait-db:
+	@echo "Waiting for database to be ready..."
+	@until mariadb -h127.0.0.1 -P3306 -uuser -ppassword -e "SELECT 1" >/dev/null 2>&1; do \
+		sleep 1; \
+	done
+
+# Initialize development environment
+init: db-up wait-db migrate generate-sqlc oapi
+
+# Stop and remove all containers
+clean-docker:
+	docker compose down -v
 
 # Format code
 fmt:
-	go fmt ./...
-
-# Run linter
+	@@ -54,13 +62,22 @@ fmt:
 lint:
 	golangci-lint run
 
-# Show help
-help:
-	@echo "Available commands:"
-	@echo "  make install    - Install dependencies"
-	@echo "  make build      - Build the application"
-	@echo "  make run        - Run the application"
-	@echo "  make migrate    - Run database migrations"
-	@echo "  make clean      - Clean build artifacts"
-	@echo "  make generate   - Generate code from OpenAPI spec"
-	@echo "  make test       - Run tests"
-	@echo "  make build-prod - Build for production"
-	@echo "  make docker-build - Build Docker image"
-	@echo "  make docker-run - Run with Docker Compose"
-	@echo "  make docker-stop - Stop Docker containers"
-	@echo "  make dev        - Run with auto-reload"
-	@echo "  make fmt        - Format code"
-	@echo "  make lint       - Run linter"
+.PROXY: oapi
+oapi: generate-server generate-models ## Generate the code from the openapi.yaml file
 
-.PHONY: all install build run migrate clean generate test build-prod docker-build docker-run docker-stop dev fmt lint help
+.PHONY: generate-server
+generate-server: ## Generate the server code
+	cd tools && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=server.cfg.yml ../openapi/swagger.yml
+
+.PHONY: generate-models
+generate-models: ## Generate the models code
+	cd tools && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=models.cfg.yml ../openapi/swagger.yml
