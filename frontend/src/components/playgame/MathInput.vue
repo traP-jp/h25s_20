@@ -1,7 +1,7 @@
 <template>
   <div :class="$style.wrapper">
     <!-- プレビュー -->
-    <div :class="$style.preview">
+    <div :class="[$style.preview, { [$style.correct]: isCorrect }]">
       {{ expression }}
     </div>
 
@@ -42,12 +42,35 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, computed } from "vue";
 import MathInputButton from "./MathInputButton.vue";
 
 const expression = ref("");
 
+import { solvePoland } from "@/lib/solver/solvePoland";
+import { encodePoland } from "@/lib/solver/encodePoland";
+
+const isCorrect = computed(() => {
+  try {
+    console.log(solvePoland(encodePoland(expression.value)));
+    return solvePoland(encodePoland(expression.value)) === "10";
+  } catch {
+    return false;
+  }
+});
+
 const addToExpression = (value: string) => {
+  // 数字の場合のみ制限をチェック
+  if (/\d/.test(value)) {
+    // 現在の式から数字のみを抽出してカウント
+    const digitCount = (expression.value.match(/\d/g) || []).length;
+
+    // すでに4つの数字がある場合は追加しない
+    if (digitCount >= 4) {
+      return;
+    }
+  }
+
   expression.value += value;
 };
 
@@ -85,6 +108,10 @@ const backspace = () => {
   align-items: center;
   justify-content: center;
   color: white;
+}
+
+.correct {
+  color: #3b82f6; /* 青色 */
 }
 
 .container {
