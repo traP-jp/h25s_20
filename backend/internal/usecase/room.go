@@ -28,13 +28,9 @@ func NewRoomUsecase() *RoomUsecase {
 // 10個のroomを初期化する
 func (r *RoomUsecase) initializeRooms() {
 	for i := 1; i <= 10; i++ {
-		room := &domain.Room{
-			ID:         i,
-			Name:       fmt.Sprintf("Room %d", i),
-			GameBoards: []domain.GameBoard{domain.NewBoard()},
-			IsOpened:   i%2 == 1, // 奇数のroomはオープン、偶数はクローズ
-			Players:    []domain.Player{},
-			ResultLog:  []domain.Result{},
+		room := domain.NewRoom(i, fmt.Sprintf("Room %d", i))
+		if i%2 == 0 { // 偶数のroomはクローズ
+			room.IsOpened = false
 		}
 		r.rooms[i] = room
 	}
@@ -90,10 +86,129 @@ func (r *RoomUsecase) AddPlayerToRoom(roomID int, player domain.Player) (*domain
 	// プレイヤーがすでに存在するかチェック
 	for _, p := range room.Players {
 		if p.ID == player.ID {
-			return nil, fmt.Errorf("player with ID %s already exists in room %d", player.ID, roomID)
+			return nil, fmt.Errorf("player with ID %d already exists in room %d", player.ID, roomID)
 		}
 	}
 
 	room.Players = append(room.Players, player)
+	return room, nil
+}
+
+func (r *RoomUsecase) UpdatePlayerReadyStatus(roomID int, playerID int, isReady bool) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	// プレイヤーを見つけて更新
+	playerFound := false
+	for i, player := range room.Players {
+		if player.ID == playerID {
+			room.Players[i].IsReady = isReady
+			playerFound = true
+			break
+		}
+	}
+
+	if !playerFound {
+		return nil, fmt.Errorf("player with ID %d not found in room %d", playerID, roomID)
+	}
+
+	// 全員がREADYになったら状態を更新
+	if room.AreAllPlayersReady() && room.State == domain.StateWaitingForPlayers {
+		room.TransitionTo(domain.StateAllReady)
+	} else if !room.AreAllPlayersReady() && room.State == domain.StateAllReady {
+		room.TransitionTo(domain.StateWaitingForPlayers)
+	}
+
+	return room, nil
+}
+
+// StartGame starts the game for the specified room
+func (r *RoomUsecase) StartGame(roomID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	err := room.StartGame()
+	if err != nil {
+		return nil, fmt.Errorf("failed to start game: %w", err)
+	}
+
+	return room, nil
+}
+
+// AbortGame aborts the game for the specified room
+func (r *RoomUsecase) AbortGame(roomID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	err := room.AbortGame()
+	if err != nil {
+		return nil, fmt.Errorf("failed to abort game: %w", err)
+	}
+
+	return room, nil
+}
+
+// CloseResult closes the result display for a player in the specified room
+func (r *RoomUsecase) CloseResult(roomID int, playerID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	err := room.CloseResult(playerID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to close result: %w", err)
+	}
+
+	return room, nil
+}
+
+// CompleteCountdown completes the countdown and transitions to game in progress
+func (r *RoomUsecase) CompleteCountdown(roomID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	err := room.CompleteCountdown()
+	if err != nil {
+		return nil, fmt.Errorf("failed to complete countdown: %w", err)
+	}
+
+	return room, nil
+}
+
+// UpdateGameBoard updates the game board for the specified room
+func (r *RoomUsecase) UpdateGameBoard(roomID int, newBoard domain.GameBoard) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	room.GameBoards = append(room.GameBoards, newBoard)
 	return room, nil
 }
