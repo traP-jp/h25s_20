@@ -23,5 +23,5 @@ type Result struct {
 type PlayerScore struct {
 	ID       int
 	PlayerId string
-	Socre    int
+	Score    int
 }
