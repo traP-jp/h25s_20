@@ -35,7 +35,7 @@ type PlayerScore struct {
 }
 
 // 回答確認後一致した行と列の情報を保持
-type Match struct {
+type Matches struct {
 	LineType string //"row"または"col"
 	Index    int
 }
@@ -90,14 +90,14 @@ func (gb *GameBoard) UpdateLine(LineType string, Index int) error {
 }
 
 // Matches内に保存されている行、列を更新する
-func (gb *GameBoard) UpdateLines(matches []Match) error {
-	for _, match := range matches {
+func (gb *GameBoard) UpdateLines(Matches []Matches) error {
+	for _, match := range Matches {
 		err := gb.UpdateLine(match.LineType, match.Index)
 		if err != nil {
 			return fmt.Errorf("更新中にエラーが発生しました (%s %d): %w", match.LineType, match.Index, err)
 		}
 	}
-	
+
 	gb.Version++
 	return nil
 }
@@ -137,10 +137,10 @@ func ValidateExpressionNumbers(Expression string, BoardLine []int) (bool, error)
 	return true, nil
 }
 
-// 盤面すべての行,列についてValidateExpressionNumbersを実行
-func FindAllMatchingLines(gb *GameBoard, expression string) ([]Match, bool) {
+// 盤面すべての行,列についてValidateExpressionNumbersを実行して一致する行,列の情報をmatches内に保存
+func FindAllMatchingLines(gb *GameBoard, expression string) ([]Matches, bool) {
 	// 見つかったマッチを格納するためのスライスを初期化
-	var matches []Match
+	var Matches []Matches
 
 	// --- すべての行をチェック ---
 	for i := 0; i < gb.Size; i++ {
@@ -148,7 +148,7 @@ func FindAllMatchingLines(gb *GameBoard, expression string) ([]Match, bool) {
 		isValid, err := ValidateExpressionNumbers(expression, rowLine)
 		if err == nil && isValid {
 			// 見つかった情報をMatch構造体としてスライスに追加
-			matches = append(matches, Match{LineType: "row", Index: i})
+			Matches = append(Matches, Matches{LineType: "row", Index: i})
 		}
 	}
 	// --- すべての列をチェック ---
@@ -157,14 +157,14 @@ func FindAllMatchingLines(gb *GameBoard, expression string) ([]Match, bool) {
 		isValid, err := ValidateExpressionNumbers(expression, colLine)
 
 		if err == nil && isValid {
-			matches = append(matches, Match{LineType: "col", Index: i})
+			Matches = append(Matches, Matches{LineType: "col", Index: i})
 		}
 	}
-	if len(matches) == 0 {
+	if len(Matches) == 0 {
 		return nil, false
 	}
 	// ループがすべて終わった後、見つかったマッチのリストを返す
-	return matches, true
+	return Matches, true
 }
 
 //指定された行または列を取得
