@@ -145,16 +145,16 @@ vector<string> solve(vector<int> val, int target) {
 
 int main() {
     for (int i = 1; i <= 9; i++) {
-        for (int j = 1; j <= 9; j++) {
-            for (int k = 1; k <= 9; k++) {
-                for (int l = 1; l <= 9; l++) {
+        for (int j = i; j <= 9; j++) {
+            for (int k = j; k <= 9; k++) {
+                for (int l = k; l <= 9; l++) {
                     // 4 つの数と、作りたい数の入力
                     vector<int> val = {i, j, k, l}; // 4 つの数
 
                     // テンパズルを解く
                     const vector<string>& res = solve(val, 10);
 
-                    if (!res.empty()) cout << val[0] << val[1] << val[2] << val[3] << endl;
+                    if (res.empty()) cout << val[0] << val[1] << val[2] << val[3] << endl;
                 }
             }
         }
