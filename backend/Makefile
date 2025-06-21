@@ -1,50 +1,58 @@
-.PHONY: build run test clean db-up db-down migrate generate-sqlc
+# Makefile
+
+# Default target
+all: build
+
+# Install dependencies
+install:
+	go mod tidy
 
 # Build the application
 build:
-	go build -o main .
+	go build -o bin/main main.go
 
-# Run tests
-test:
-	go test -v ./...
+# Run the application
+run:
+	go run main.go
+
+# Run database migrations
+migrate:
+	@echo "Applying database migrations..."
+	mysql -u root -p < db/schema.sql
 
 # Clean build artifacts
 clean:
-	rm -f main
-	rm -rf tmp
+	rm -rf bin/ tmp/
 
-# Start docker containers
-db-up:
-	docker compose up -d
+# Generate code from OpenAPI spec
+generate:
+	@echo "Generating code from OpenAPI spec..."
+	oapi-codegen -config tools/models.cfg.yml openapi/swagger.yml
+	oapi-codegen -config tools/server.cfg.yml openapi/swagger.yml
 
-# Stop docker containers
-db-down:
-	docker compose down
+# Run tests
+test:
+	go test ./...
 
-# Apply database migrations using sqldef
-migrate-dry-run:
-	mysqldef -h 127.0.0.1 -P 3306 -u user -ppassword template_db --dry-run < db/schema.sql
+# Build for production
+build-prod:
+	CGO_ENABLED=0 GOOS=linux go build -a -installsuffix cgo -o bin/main main.go
 
-migrate:
-	mysqldef -h 127.0.0.1 -P 3306 -u user -ppassword template_db < db/schema.sql
+# Docker build
+docker-build:
+	docker build -t h25s_20-backend .
 
-# Generate SQL code using sqlc
-generate-sqlc:
-	sqlc generate
+# Docker run
+docker-run:
+	docker-compose up -d
 
-# Wait for database to be ready
-wait-db:
-	@echo "Waiting for database to be ready..."
-	@until mariadb -h127.0.0.1 -P3306 -uuser -ppassword -e "SELECT 1" >/dev/null 2>&1; do \
-		sleep 1; \
-	done
+# Docker stop
+docker-stop:
+	docker-compose down
 
-# Initialize development environment
-init: db-up wait-db migrate generate-sqlc oapi
-
-# Stop and remove all containers
-clean-docker:
-	docker compose down -v
+# Run with auto-reload for development
+dev:
+	go run main.go
 
 # Format code
 fmt:
@@ -54,13 +62,22 @@ fmt:
 lint:
 	golangci-lint run
 
-.PROXY: oapi
-oapi: generate-server generate-models ## Generate the code from the openapi.yaml file
+# Show help
+help:
+	@echo "Available commands:"
+	@echo "  make install    - Install dependencies"
+	@echo "  make build      - Build the application"
+	@echo "  make run        - Run the application"
+	@echo "  make migrate    - Run database migrations"
+	@echo "  make clean      - Clean build artifacts"
+	@echo "  make generate   - Generate code from OpenAPI spec"
+	@echo "  make test       - Run tests"
+	@echo "  make build-prod - Build for production"
+	@echo "  make docker-build - Build Docker image"
+	@echo "  make docker-run - Run with Docker Compose"
+	@echo "  make docker-stop - Stop Docker containers"
+	@echo "  make dev        - Run with auto-reload"
+	@echo "  make fmt        - Format code"
+	@echo "  make lint       - Run linter"
 
-.PHONY: generate-server
-generate-server: ## Generate the server code
-	cd tools && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=server.cfg.yml ../openapi/swagger.yml
-
-.PHONY: generate-models
-generate-models: ## Generate the models code
-	cd tools && go run github.com/oapi-codegen/oapi-codegen/v2/cmd/oapi-codegen --config=models.cfg.yml ../openapi/swagger.yml
+.PHONY: all install build run migrate clean generate test build-prod docker-build docker-run docker-stop dev fmt lint help

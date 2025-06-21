@@ -3,10 +3,10 @@ module github.com/kaitoyama/kaitoyama-server-template
 go 1.24.4
 
 require (
-	github.com/Knetic/govaluate v3.0.0+incompatible
 	github.com/coder/websocket v1.8.13
 	github.com/getkin/kin-openapi v0.131.0
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/google/uuid v1.5.0
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/oapi-codegen/runtime v1.1.1
@@ -18,7 +18,6 @@ require (
 	github.com/dprotaso/go-yit v0.0.0-20220510233725-9ba8df137936 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/swag v0.23.0 // indirect
-	github.com/google/uuid v1.5.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/labstack/gommon v0.4.2 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect

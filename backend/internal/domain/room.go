@@ -2,13 +2,8 @@ package domain
 
 import (
 	"fmt"
-	"math"
 	"math/rand"
-	"regexp"
 	"sort"
-	"strconv"
-
-	"github.com/Knetic/govaluate"
 )
 
 // RoomState represents the game state of a room
@@ -117,14 +112,16 @@ func AttemptMoveWithVersion(gb *GameBoard, expression string, submittedVersion i
 		return false, conflictMsg, 0
 	}
 
-	evalResult, err := EvaluateExpression(expression)
+	// 新しい安全な計算システムを使用
+	calculator := NewFormulaCalculator()
+	evalResult, err := calculator.EvaluateFormula(expression)
 	if err != nil {
-		return false, "エラー: 計算ができませんでした", 0
+		return false, fmt.Sprintf("エラー: %s", err.Error()), 0
 	}
 
-	const epsilon = 1e-9
-	if math.Abs(evalResult-10) > epsilon {
-		return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %v)", evalResult), 0
+	// 結果が10かどうかをチェック
+	if !calculator.CheckTarget10(evalResult) {
+		return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %.6f)", evalResult), 0
 	}
 
 	// 検証をクリアしたら盤面を更新（新仕様）
@@ -254,22 +251,10 @@ func (gb *GameBoard) GetLine(linetype string, index int) ([]int, error) {
 	return nil, fmt.Errorf("invalid line type: %s", linetype)
 }
 
-// 入力された数式の計算
+// 入力された数式の計算（新しい安全な実装）
 func EvaluateExpression(expression string) (float64, error) {
-	eval, err := govaluate.NewEvaluableExpression(expression)
-	if err != nil {
-		return 0, fmt.Errorf("無効な数式です: %w", err)
-	}
-
-	result, err := eval.Evaluate(nil)
-	if err != nil {
-		return 0, fmt.Errorf("式の計算に失敗しました: %w", err)
-	}
-
-	if val, ok := result.(float64); ok {
-		return val, nil
-	}
-	return 0, fmt.Errorf("計算結果を数値に変換できませんでした")
+	calculator := NewFormulaCalculator()
+	return calculator.EvaluateFormula(expression)
 }
 
 // ステートマシンの制御メソッド
@@ -555,24 +540,15 @@ func FindAllMatchingLinesWithSets(gb *GameBoard, expression string) ([]Matches, 
 	return matches, len(matches) > 0
 }
 
-// 数式から数字を抽出してソートする
+// 数式から数字を抽出してソートする（新しい安全な実装）
 func ExtractAndSortNumbers(expression string) ([]int, error) {
-	re := regexp.MustCompile(`\d+`)
-	numberStrings := re.FindAllString(expression, -1)
-
-	if len(numberStrings) != 4 {
-		return nil, fmt.Errorf("数式には4つの数字が必要です")
+	calculator := NewFormulaCalculator()
+	numbers, err := calculator.ValidateFormulaNumbers(expression)
+	if err != nil {
+		return nil, err
 	}
 
-	numbers := make([]int, len(numberStrings))
-	for i, numStr := range numberStrings {
-		num, err := strconv.Atoi(numStr)
-		if err != nil {
-			return nil, fmt.Errorf("数字の変換に失敗しました: %v", err)
-		}
-		numbers[i] = num
-	}
-
+	// 数字をソートして返す
 	sort.Ints(numbers)
 	return numbers, nil
 }
