@@ -61,6 +61,7 @@ watch(board, (newBoard) => {
   display: flex;
   flex-direction: column;
   justify-content: flex-start;
+  box-sizing: border-box;
 }
 
 .header {
