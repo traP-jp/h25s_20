@@ -16,6 +16,7 @@
       name="Me"
       :score="50"
       :time="'10:00'"
+      :class="$style.myinfo"
     />
 
     <div :class="$style.board">
@@ -25,10 +26,10 @@
     <div :class="$style.inputbox">
       <MathInput />
     </div>
-    <button @click="showModalTest = true">モーダルのテスト</button>
-    <OverlayModal v-if="showModalTest" @close="showModalTest = false">
-      <!-- ここに Component を差し込む -->
-    </OverlayModal>
+
+    <StartModal />
+    <ResultModal />
+
   </div>
 </template>
 
@@ -41,6 +42,8 @@ import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
 import MathInput from "@/components/playgame/MathInput.vue";
 import MyInfo from "@/components/playgame/MyInfo.vue";
 import OverlayModal from "@/components/OverlayModal.vue";
+import StartModal from "@/components/playgame/start/StartModal.vue";
+import ResultModal from "@/components/playgame/result/ResultModal.vue";
 
 const players = [
   { icon: "/images/player1.png", name: "Player 01", score: 30 },
@@ -51,7 +54,8 @@ function handleRoomClick(room: Room) {
   console.log("Room clicked:", room);
 }
 
-const showModalTest = ref(false);
+const showStartModal = ref(false);
+const showResultModal = ref(false);
 </script>
 
 <style module>
@@ -84,6 +88,8 @@ const showModalTest = ref(false);
   flex-direction: column;
   border: 1px solid var(--border-color, #ccc);
   text-align: left;
+  z-index: 1010;
+
 }
 
 .userinfo {

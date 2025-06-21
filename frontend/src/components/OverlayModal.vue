@@ -30,8 +30,8 @@ function close() {
   background: #fff;
   padding: 1.5rem;
   border-radius: 8px;
-  max-width: 90%;
-  max-height: 90%;
+  width: 90%;
+  height: 90%;
   overflow: auto;
 }
 </style>
