@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: Kaitoyama Server API
+  title: hs_25_20_server API
   version: "1.0.0"
 servers:
   - url: 'http://localhost:8080/api'
@@ -22,3 +22,207 @@ paths:
                   status:
                     type: string
                     example: "ok"
+  /users:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Invalid request
+        '409':
+          description: Username already exists
+        '500':
+          description: Internal server error
+  /rooms:
+    get:
+      summary: Get a list of rooms
+      responses:
+        '200':
+          description: A list of rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+        '500':
+          description: Internal server error
+  /rooms/{roomId}/actions:
+    post:
+      summary: Perform an action on a room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID of the room to perform an action on
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - JOIN
+                    - READY
+                    - CANCEL
+                    - START
+                  example: "JOIN"
+              required:
+                - action
+      responses:
+        '204':
+          description: Action successful
+        '400':
+          description: Invalid request
+        '403':
+          description: Forbidden (e.g. permission denied for START)
+        '409':
+          description: Conflict (The action cannot be performed in the current state)
+        '500':
+          description: Internal server error
+  /rooms/{roomId}/formulas:
+    post:
+      summary: Submit a formula for the current room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID of the room to submit a formula to
+          schema:
+            type: integer
+            example: 1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                formula:
+                  type: string
+                  example: "1+2*3-4"
+              required:
+                - formula
+      responses:
+        '200':
+          description: Formula submission was successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Board'
+        '400':
+          description: Invalid request (e.g. invalid formula format)
+        '403':
+          description: Forbidden (e.g. user is not in a room)
+        '409':
+          description: Conflict (The board state has been updated by another user)
+        '500':
+          description: Internal server error
+  /rooms/{roomId}/result:
+    get:
+      summary: Get room results
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID of the room to get results from
+          schema:
+            type: integer
+            example: 1
+      responses:
+        '200':
+          description: A list of user scores for the room
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RoomResultItem'
+        '403':
+          description: Forbidden (e.g., user not in a room)
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    Board:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            type: integer
+          minItems: 16
+          maxItems: 16
+          example: [1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4, 1, 2, 3, 4]
+        version:
+          type: integer
+          description: "The new version of the board state"
+        gainScore:
+          type: integer
+          example: 10
+      required:
+        - content
+        - version
+        - gainScore
+    RoomResultItem:
+      type: object
+      properties:
+        user:
+          type: string
+          description: "username"
+          example: "testuser"
+        score:
+          type: integer
+          example: 120
+      required:
+        - user
+        - score
+    UserCreate:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "testuser"
+        password:
+          type: string
+          description: "SHA256 hashed password"
+          example: "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+      required:
+        - username
+        - password
+    Room:
+      type: object
+      properties:
+        roomId:
+          type: integer
+          example: 1
+        roomName:
+          type: string
+          example: "Room 1"
+        users:
+          type: array
+          items:
+            type: string
+            example: "player1"
+        isOpened:
+          type: boolean
+          example: true
+      required:
+        - roomId
+        - roomName
+        - users
+        - isOpened
