@@ -10,13 +10,11 @@ const router = createRouter({
     },
     {
       path: "/signup",
-      name: "サインアップ",
       component: () => import("@/views/SignUpView.vue"),
       meta: { showLayout: true },
     },
     {
       path: "/play",
-      name: "サインアップ",
       component: () => import("@/views/PlayView.vue"),
       meta: { showLayout: true },
     },
