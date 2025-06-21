@@ -5,6 +5,8 @@ import (
 	"math/rand"
 	"regexp"
 	"strconv"
+
+	"github.com/Knetic/govaluate"
 )
 
 type Room struct {
@@ -97,7 +99,7 @@ func (gb *GameBoard) UpdateLines(matches []Matches) error {
 			return fmt.Errorf("更新中にエラーが発生しました (%s %d): %w", match.Linetype, match.Index, err)
 		}
 	}
-	
+
 	gb.Version++
 	return nil
 }
@@ -117,16 +119,16 @@ func ValidateExpressionNumbers(expression string, boardLine []int) (bool, error)
 		boardCounts[num]++
 	}
 	// 数式にある数字の出現回数を数える
-	exprCounts  := make(map[int]int)
+	exprCounts := make(map[int]int)
 	for _, s := range numStringsInExpr {
 		num, err := strconv.Atoi(s)
 		if err != nil { // 数字の変換に失敗した場合、エラーを返す
 			return false, fmt.Errorf("数字の変換に失敗しました: %v", err)
 		}
-		exprCounts [num]++
+		exprCounts[num]++
 	}
 	// 数式の数字が、盤面の数字の個数のに一致するかチェック
-	for NumInExpr, countInExpr := range exprCounts  {
+	for NumInExpr, countInExpr := range exprCounts {
 		countInBoard, ok := boardCounts[NumInExpr]
 		// 盤面に存在しない数字が数式に含まれている場合、falseを返す
 		// また、数式の数字の出現回数が盤面の数字の出現回数にあわない場合もfalseを返す
@@ -142,7 +144,7 @@ func FindAllMatchingLines(gb *GameBoard, expression string) ([]Matches, bool) {
 	// 見つかったマッチを格納するためのスライスを初期化
 	var matches []Matches
 
-	// --- すべての行をチェック ---
+	// すべての行をチェック
 	for i := 0; i < gb.Size; i++ {
 		rowLine, _ := gb.GetLine("row", i)
 		isValid, err := ValidateExpressionNumbers(expression, rowLine)
@@ -151,7 +153,7 @@ func FindAllMatchingLines(gb *GameBoard, expression string) ([]Matches, bool) {
 			matches = append(matches, Matches{Linetype: "row", Index: i})
 		}
 	}
-	// --- すべての列をチェック ---
+	// すべての列をチェック
 	for i := 0; i < gb.Size; i++ {
 		colLine, _ := gb.GetLine("col", i)
 		isValid, err := ValidateExpressionNumbers(expression, colLine)
@@ -167,7 +169,7 @@ func FindAllMatchingLines(gb *GameBoard, expression string) ([]Matches, bool) {
 	return matches, true
 }
 
-//指定された行または列を取得
+// 指定された行または列を取得
 func (gb *GameBoard) GetLine(linetype string, index int) ([]int, error) {
 	if linetype == "row" {
 		if index < 0 || index >= gb.Size {
@@ -186,3 +188,23 @@ func (gb *GameBoard) GetLine(linetype string, index int) ([]int, error) {
 	}
 	return nil, fmt.Errorf("invalid line type: %s", linetype)
 }
+
+//入力された数式の計算
+func EvaluateExpression(expression string) (float64, error) {
+	eval, err := govaluate.NewEvaluableExpression(expression)
+	if err != nil {
+		return 0, fmt.Errorf("無効な数式です: %w", err)
+	}
+
+	result, err := eval.Evaluate(nil)
+	if err != nil {
+		return 0, fmt.Errorf("式の計算に失敗しました: %w", err)
+	}
+
+	if val, ok := result.(float64); ok {
+		return val, nil
+	}
+	return 0, fmt.Errorf("計算結果を数値に変換できませんでした")
+}
+
+
