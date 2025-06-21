@@ -3,7 +3,10 @@
     <img :class="$style.logo" src="/logo.svg" alt="Logo" />
     <div :class="$style.userInfo">
       <UserIcon :id="username" :size="50" />
-      <input :class="$style.input" v-model="username" required type="text" placeholder="名前を入力" />
+      <div :class="$style.input">
+        <div v-if="false">{{ username }}</div>
+        <input v-else v-model="username" required type="text" placeholder="名前を入力" />
+      </div>
     </div>
     <button :disabled="!isValid" :class="$style.button" @click="onClick">ゲームをはじめる</button>
   </div>
@@ -52,6 +55,8 @@ const isValid = computed(() => {
 }
 
 .input {
+  width: 200px;
+  font-weight: 500;
   border-bottom: 1px solid #bbb;
 }
 
