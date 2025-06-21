@@ -79,6 +79,8 @@ paths:
                     - READY
                     - CANCEL
                     - START
+                    - ABORT
+                    - CLOSE_RESULT
                   example: "JOIN"
               required:
                 - action

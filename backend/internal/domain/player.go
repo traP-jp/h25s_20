@@ -1,6 +1,8 @@
 package domain
 
 type Player struct {
-	ID       string
-	UserName string
+	ID              int
+	UserName        string
+	IsReady         bool
+	HasClosedResult bool // 結果表示を閉じたかどうか
 }

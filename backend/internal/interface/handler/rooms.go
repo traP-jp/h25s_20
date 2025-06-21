@@ -29,7 +29,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 	}
 
 	var mockPlayer = domain.Player{
-		ID:       "1",
+		ID:       1,
 		UserName: "testuser",
 	}
 
@@ -42,9 +42,35 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 		return c.NoContent(http.StatusNoContent)
 
-	case models.READY, models.CANCEL, models.START:
-		// This is a simple mock that always returns success for valid actions.
-		// It does not implement stateful logic for errors like 403 or 409.
+	case models.READY:
+		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, mockPlayer.ID, true)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, "Failed to update player ready status")
+		}
+		return c.NoContent(http.StatusNoContent)
+	case models.CANCEL:
+		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, mockPlayer.ID, false)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, "Failed to update player ready status")
+		}
+		return c.NoContent(http.StatusNoContent)
+	case models.START:
+		_, err := h.roomUsecase.StartGame(roomId)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, "Failed to start game")
+		}
+		return c.NoContent(http.StatusNoContent)
+	case models.ABORT:
+		_, err := h.roomUsecase.AbortGame(roomId)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, "Failed to abort game")
+		}
+		return c.NoContent(http.StatusNoContent)
+	case models.CLOSERESULT:
+		_, err := h.roomUsecase.CloseResult(roomId, mockPlayer.ID)
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, "Failed to close result")
+		}
 		return c.NoContent(http.StatusNoContent)
 	default:
 		return c.JSON(http.StatusBadRequest, "Invalid action.")
