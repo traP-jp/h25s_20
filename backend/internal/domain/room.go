@@ -1,17 +1,18 @@
 package domain
 
 type Room struct {
-	ID        int
-	Name      string
-	Boards    []Board
-	IsOpened  bool
-	Players   []Player
-	ResultLog []Result
+	ID         int
+	Name       string
+	GameBoards []GameBoard
+	IsOpened   bool
+	Players    []Player
+	ResultLog  []Result
 }
 
-type Board struct {
+type GameBoard struct {
 	Version int
-	Board   []int
+	Board   [][]int
+	Size    int
 }
 
 type Result struct {
