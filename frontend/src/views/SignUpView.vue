@@ -20,7 +20,8 @@ import { ref } from "vue";
 import { useRouter } from "vue-router";
 import UserIcon from "@/components/UserIcon.vue";
 
-const username = ref('')
+const username = ref('');
+const router = useRouter();
 
 const onClick = () => {
   router.push("/");
