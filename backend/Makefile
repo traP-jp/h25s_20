@@ -48,7 +48,9 @@ clean-docker:
 
 # Format code
 fmt:
-	@@ -54,13 +62,22 @@ fmt:
+	go fmt ./...
+
+# Run linter
 lint:
 	golangci-lint run
 
