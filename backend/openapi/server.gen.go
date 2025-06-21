@@ -8,12 +8,14 @@ import (
 	"compress/gzip"
 	"encoding/base64"
 	"fmt"
+	"net/http"
 	"net/url"
 	"path"
 	"strings"
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/labstack/echo/v4"
+	"github.com/oapi-codegen/runtime"
 )
 
 // ServerInterface represents all server handlers.
@@ -25,14 +27,14 @@ type ServerInterface interface {
 	// (GET /rooms)
 	GetRooms(ctx echo.Context) error
 	// Perform an action on a room
-	// (POST /rooms/actions)
-	PostRoomsActions(ctx echo.Context) error
+	// (POST /rooms/{roomId}/actions)
+	PostRoomsRoomIdActions(ctx echo.Context, roomId int) error
 	// Submit a formula for the current room
-	// (POST /rooms/formulas)
-	PostRoomsFormulas(ctx echo.Context) error
+	// (POST /rooms/{roomId}/formulas)
+	PostRoomsRoomIdFormulas(ctx echo.Context, roomId int) error
 	// Get room results
-	// (GET /rooms/result)
-	GetRoomsResult(ctx echo.Context) error
+	// (GET /rooms/{roomId}/result)
+	GetRoomsRoomIdResult(ctx echo.Context, roomId int) error
 	// Register a new user
 	// (POST /users)
 	PostUsers(ctx echo.Context) error
@@ -61,30 +63,51 @@ func (w *ServerInterfaceWrapper) GetRooms(ctx echo.Context) error {
 	return err
 }
 
-// PostRoomsActions converts echo context to params.
-func (w *ServerInterfaceWrapper) PostRoomsActions(ctx echo.Context) error {
+// PostRoomsRoomIdActions converts echo context to params.
+func (w *ServerInterfaceWrapper) PostRoomsRoomIdActions(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostRoomsActions(ctx)
+	err = w.Handler.PostRoomsRoomIdActions(ctx, roomId)
 	return err
 }
 
-// PostRoomsFormulas converts echo context to params.
-func (w *ServerInterfaceWrapper) PostRoomsFormulas(ctx echo.Context) error {
+// PostRoomsRoomIdFormulas converts echo context to params.
+func (w *ServerInterfaceWrapper) PostRoomsRoomIdFormulas(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.PostRoomsFormulas(ctx)
+	err = w.Handler.PostRoomsRoomIdFormulas(ctx, roomId)
 	return err
 }
 
-// GetRoomsResult converts echo context to params.
-func (w *ServerInterfaceWrapper) GetRoomsResult(ctx echo.Context) error {
+// GetRoomsRoomIdResult converts echo context to params.
+func (w *ServerInterfaceWrapper) GetRoomsRoomIdResult(ctx echo.Context) error {
 	var err error
+	// ------------- Path parameter "roomId" -------------
+	var roomId int
+
+	err = runtime.BindStyledParameterWithOptions("simple", "roomId", ctx.Param("roomId"), &roomId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter roomId: %s", err))
+	}
 
 	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetRoomsResult(ctx)
+	err = w.Handler.GetRoomsRoomIdResult(ctx, roomId)
 	return err
 }
 
@@ -127,9 +150,9 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/health", wrapper.GetHealth)
 	router.GET(baseURL+"/rooms", wrapper.GetRooms)
-	router.POST(baseURL+"/rooms/actions", wrapper.PostRoomsActions)
-	router.POST(baseURL+"/rooms/formulas", wrapper.PostRoomsFormulas)
-	router.GET(baseURL+"/rooms/result", wrapper.GetRoomsResult)
+	router.POST(baseURL+"/rooms/:roomId/actions", wrapper.PostRoomsRoomIdActions)
+	router.POST(baseURL+"/rooms/:roomId/formulas", wrapper.PostRoomsRoomIdFormulas)
+	router.GET(baseURL+"/rooms/:roomId/result", wrapper.GetRoomsRoomIdResult)
 	router.POST(baseURL+"/users", wrapper.PostUsers)
 
 }
@@ -137,27 +160,28 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 // Base64 encoded, gzipped, json marshaled Swagger object
 var swaggerSpec = []string{
 
-	"H4sIAAAAAAAC/7xXy27bRhd+lcH8/yJpWfNiSZa5U5yb28AyZHsRBIEx4hyJk5Az7MwwsRBoU79Bge66",
-	"6rJpgT5A38Zo8xrFzFASJdKOHBVdiaK+OXPOd75z0QeciLwQHLhWOP6AVZJCTuzjI0EkNQ+FFAVIzcC+",
-	"TgTXwLV5hCuSFxng+FXoRd6+1/Fu+XztYaYht+f1rAAcY8Y1TEHiuYdzcnXsfg17Hs4Zr32r0ERKMjPY",
-	"KWH8LBES1u4PA6/F7juQiglukBRUIlmh7Vd8ngLi8B5VACQmSKeAxiZgpDTRgJv25h6W8H3JJFAcv1rS",
-	"sLqm7tzr5XkxfgOJNu6MhMibdDI1LIADXYtHyxKWFsZCZEC4MSGFyI/XoWFb5AZ3QvJ1kqwDKFyFprRk",
-	"fGrwpQLpvFlkaXWqyMgMZOux9eRsEFT5WnNmcY+3Cvo2nkagykwbHTQZU830R635N7c1k2/ecufOKkgN",
-	"Slt4I8qNqCqQujXLFwrkkQSjoYbnBVHqvXBFte7U2fNB1O2hlKgUKFri6i52od/v9A/7lET9oHMQdkMa",
-	"QLc36dOkFx1GBwf7vWCfBrRHyHhMaS8iYQiTgyikYbcT0f5teecNndyLjIrKpctNTswpxifCFj/T9opU",
-	"XUbdyyi4VCDfgUSD0+NaJcU43Av2AuOhKICTguEY79tX5iadWjb9FEimU/M4BduPDNfEMGpqBD8D/dwh",
-	"jNeqEFy5NERBsNHISFFkLLFH/TfKtQzXCVvkp4kuN2pEvG3lqoWI9bQPv7M4VeY5kTMcY+cwSlJI3iLg",
-	"tBCMa4vxTRmpu4IdWcCOsS4bwP8lTHCM/+ev5oNfDQffdrJm/TfCG6CMKW3aq3N+7uGu82cdd8y1EVKG",
-	"KjWAlEJuMPMMNCKb9pa8+CQxtlyVCdVC0KlQjqFBhXRSBqUfCTrbQQ/uZqsHXuamLL4dHp9gD4+eDB6/",
-	"xB4+GpwcPXmBPXx2PhidmwJZCaeC3l1m1Q3tlbUCmqExb6S/06TbMYBUmSSg1KTMTGI67Yl5RzJGUcWU",
-	"w+03cU+FHDNKgaMHsDfdQwXInCk7WylwBhRNhEQ2/ofOyGHTyJHgk4wlGj0w89kFjRLCudBoDMbmRMgc",
-	"KGLcjuuklBK4dgP74U7iOnW2EeGLewVHxKqsLjKDKTOyjcqeLqD/lsyqu9f7Tvh19NX+N53PKmhx+Msk",
-	"dL8OclfjcCtlS6eo6EKqHC+E856omkT3ttVopUBWva0it59EP9xawWa0IaaQER9baGFb7dYWSTPS0RiA",
-	"o7KgRANF4xkiXOgUpL1kN+GeGb5MY6zFuVYcmxKWdrH67Bhx+9d/Nkxq6969xorNkt3F1DJyWQ2nbdLs",
-	"OQvNJO80powV5IiuZtRyv769a1xUq/GXdou7KK7tpFsVfNiM3ZhAibVBa2WZze43Ow7bLZslEpFMAqEz",
-	"BFdM6d2WhRFMmdIgEbH/8+wyayN3ZxSOX22avbn+/eb6z5sfPt5cf/z04x9//XJt/q/IzCyrWhex72ci",
-	"IVkqlI77QT/wzVY69zbN/P3zb59++rXFgIp9/+XwYnR5Oho+vjg6Px6eXF6MXuD56/k/AQAA//+M4AgJ",
-	"hA8AAA==",
+	"H4sIAAAAAAAC/8xX3W7bNhR+FYLbRbtp0U9sx/Gdm/5lK5LASS6KIgho8dhiK5EaSbU1At8sbzBgd7va",
+	"5boBe4C9TbD1NQaSsi1bcmrX2LCryMrh+f2+T4c3OBZZLjhwrXDvBqs4gYzYx0eCSGoecilykJqBfR0L",
+	"roFr8wjvSZangHuvQi/y9r2Wt+bvlYeZhsye15MccA8zrmEMEk89nJH3x+6/YcfDGeOVX6U1kZJMjO2Y",
+	"MH4eCwlL8cPAa/D7FqRightLCiqWLNf2J75IAHF4h0oDJEZIJ4CGpmCkNNGA6/6mHpbwfcEkUNx7NW/D",
+	"Ikw1uav5eTF8DbE26QyEyOrtZOo0Bw50qR4tC5h7GAqRAuHGhRQiO142DZsqN3YnJFtukk0AhYvSlJaM",
+	"j419oUC6bGZTWpzKUzIB2XhseTgrDSpzrSQzi+Mtil7XpwGoItUGB/WOqfr4o8b5m2j14Zu33KWzKFKD",
+	"0ta8VuVKVaWRWjvlSwXySILBUC3znCj1TjhSLSd1/rwftTsoISoBiuZ21RTb0O22uoddSqJu0DoI2yEN",
+	"oN0ZdWnciQ6jg4P9TrBPA9ohZDiktBORMITRQRTSsN2KaHfd3HkNJ1s1o2zlPOV6T8wpxkfCkp9pGyJR",
+	"11H7OgquFci3IFH/7LjCpB4O94K9wGQocuAkZ7iH9+0rE0kntpt+AiTViXkcg9Uj02tiOmo4gp+Bfu4s",
+	"TNYqF1y5MURBsCJkJM9TFtuj/mvlJMMpYQP8NNHFCkfEm8ZeNTRieeyn31k7VWQZkRPcwy5hFCcQv0HA",
+	"aS4Y19bGNzRS9xU7sAY71joXgC8ljHAPf+Evvg9++XHwrZLV+V8rr49SprSRV5f81MNtl8+y3THXBkgp",
+	"KtEAUgq50plnoBFZ9Tfvi3/j5Gbqk9g4dXQTqqFTZ0K5Vg3siX5pb4AlSQbaKuGrWoqPZ18JEwhpgXKQ",
+	"IyEzRDhyMZH9BjBjbTCKPeyoVVHCOXecwC/afp+cT6/cSVD6kaCTHaDr8rTxeJEZBn97enyCPTx40n/8",
+	"Env4qH9y9OQF9vD5RX9wYbi8wHhper8ilBGaRWC5/GkNqa06Mtx0kCriGJQaFanBUKsZQ29JyigqO+Xs",
+	"9ut2T4UcMkqBowewN94zY8yYsmsABc6AopGQyNb/0Dk5rDs5EnyUslijB2aVKMcfE86FRkOYQQMoYtxi",
+	"Ji6kBK7dbvFwJx6cNcAOEYvKRj4Y4yIlmxPi6ezA1oxQxTBjhqVlTKTF/5wQZaLLYh5+HX21/03rk1if",
+	"Hf48sG8ny/epsdvTG+S3nKSbi4P4O6IqZNrblE0lV1j5djZf85fohxtzzewLiClkaMJmqN2UZZXt3OxJ",
+	"aAjAUZFTooGi4QQRLnQC0gbZjWLnqzg2ilCl8VqySbu2fvIj7YjmdtztaTYGjVwghUZSZP8ix/6LRaKy",
+	"6m+1Ulgw2T1czQcky8VkEzR6zkMdizutKHZI5XQcROZ3q/Xqe1leiz5X1O5rceU+spEuhfXajQsUWx+0",
+	"oh7pZLuP8WGzZ4NXRFIJhE4QvGdK77YoDmDMlAaJiL3j24uMrdydaeLY3e3vd7d/3v3w4e72w8cf//jr",
+	"l1tzV5Wpuahonfd8PxUxSROhdK8bdAPf3Eim3qqbv3/+7eNPvzY4UD3ff3l6Obg+G5w+vjy6OD49ub4c",
+	"vMDTq+k/AQAA///pPifsgBEAAA==",
 }
 
 // GetSwagger returns the content of the embedded swagger specification file

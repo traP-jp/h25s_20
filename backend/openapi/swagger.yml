@@ -54,9 +54,17 @@ paths:
                   $ref: '#/components/schemas/Room'
         '500':
           description: Internal server error
-  /rooms/actions:
+  /rooms/{roomId}/actions:
     post:
       summary: Perform an action on a room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID of the room to perform an action on
+          schema:
+            type: integer
+            example: 1
       requestBody:
         required: true
         content:
@@ -85,9 +93,17 @@ paths:
           description: Conflict (The action cannot be performed in the current state)
         '500':
           description: Internal server error
-  /rooms/formulas:
+  /rooms/{roomId}/formulas:
     post:
       summary: Submit a formula for the current room
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID of the room to submit a formula to
+          schema:
+            type: integer
+            example: 1
       requestBody:
         required: true
         content:
@@ -115,9 +131,17 @@ paths:
           description: Conflict (The board state has been updated by another user)
         '500':
           description: Internal server error
-  /rooms/result:
+  /rooms/{roomId}/result:
     get:
       summary: Get room results
+      parameters:
+        - name: roomId
+          in: path
+          required: true
+          description: ID of the room to get results from
+          schema:
+            type: integer
+            example: 1
       responses:
         '200':
           description: A list of user scores for the room

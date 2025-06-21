@@ -25,8 +25,8 @@ func (h *Handler) GetRooms(c echo.Context) error {
 	return c.JSON(http.StatusOK, rooms)
 }
 
-func (h *Handler) PostRoomsActions(c echo.Context) error {
-	var req models.PostRoomsActionsJSONRequestBody
+func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
+	var req models.PostRoomsRoomIdActionsJSONRequestBody
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, "Invalid request body")
 	}
@@ -41,8 +41,8 @@ func (h *Handler) PostRoomsActions(c echo.Context) error {
 	}
 }
 
-func (h *Handler) PostRoomsFormulas(c echo.Context) error {
-	var req models.PostRoomsFormulasJSONRequestBody
+func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
+	var req models.PostRoomsRoomIdFormulasJSONRequestBody
 	if err := c.Bind(&req); err != nil {
 		return c.JSON(http.StatusBadRequest, "Invalid request body")
 	}
@@ -58,7 +58,7 @@ func (h *Handler) PostRoomsFormulas(c echo.Context) error {
 	return c.JSON(http.StatusOK, mockBoard)
 }
 
-func (h *Handler) GetRoomsResult(c echo.Context) error {
+func (h *Handler) GetRoomsRoomIdResult(c echo.Context, roomId int) error {
 	results := []models.RoomResultItem{
 		{
 			User:  "testuser1",
