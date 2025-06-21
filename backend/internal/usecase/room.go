@@ -1,6 +1,7 @@
 package usecase
 
 import (
+	"errors"
 	"fmt"
 	"sync"
 
@@ -179,4 +180,57 @@ func (r *RoomUsecase) CloseResult(roomID int, playerID int) (*domain.Room, error
 	}
 
 	return room, nil
+}
+
+// 数式を受け取りスコアとボードの更新を行う
+func (r *RoomUsecase) ApplyFormula(roomID int, playerID int, formula string) (*domain.GameBoard, int, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	//ルームが存在するかをチェック
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, 0, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	// プレイヤーが参加しているかをチェック
+	playerInRoom := false
+	for _, p := range room.Players {
+		if p.ID == playerID {
+			playerInRoom = true
+			break
+		}
+	}
+	if !playerInRoom {
+		return nil, 0, fmt.Errorf("player is not in this room")
+	}
+
+	// ゲーム進行中かをチェック
+	if room.State != domain.StateGameInProgress {
+		return nil, 0, fmt.Errorf("game is not in progress")
+	}
+
+	if len(room.GameBoards) == 0 {
+		return nil, 0, fmt.Errorf("no game board available")
+	}
+	currentBoard := &room.GameBoards[len(room.GameBoards)-1]
+
+	// AttemptMoveを呼び出し、成否を受け取る
+	success, message := domain.AttemptMove(currentBoard, formula)
+
+	// もし、AttemptMoveの結果が失敗だったら元のボードを送信する
+	if !success {
+		return currentBoard, 0, errors.New(message)
+	}
+
+	// --- 成功した場合のみ、以下の処理を行う ---
+	gainScore := 10
+	for i := range room.Players {
+		if room.Players[i].ID == playerID {
+			room.Players[i].Score += gainScore
+			break
+		}
+	}
+
+	return currentBoard, gainScore, nil
 }
