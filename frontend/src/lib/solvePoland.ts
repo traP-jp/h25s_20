@@ -1,4 +1,10 @@
-export function solveExpression(s: string): string {
+// Output:
+// 無効な式: Invalid input
+// 整数にならない式: Not an integer
+// 10以外の整数になる式: Not 10
+// 10になる式: 10
+
+export function solvePoland(s: string): string {
   function calc_poland(exp: string): number {
       const space: number[] = [];
 

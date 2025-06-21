@@ -1,3 +1,4 @@
+// invalid_listの作成用 本番環境には不要
 // see: https://github.com/drken1215/book_puzzle_algorithm/blob/master/solvers/chap1_brute_force/1_1_ten_puzzle_solver.cpp
 
 #include <iostream>
