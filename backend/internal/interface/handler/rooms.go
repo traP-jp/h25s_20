@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 
+	"github.com/kaitoyama/kaitoyama-server-template/internal/domain"
 	"github.com/kaitoyama/kaitoyama-server-template/openapi/models"
 	"github.com/labstack/echo/v4"
 )
@@ -27,8 +28,21 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		return c.JSON(http.StatusBadRequest, "Invalid request body")
 	}
 
+	var mockPlayer = domain.Player{
+		ID:   "1",
+		Name: "testuser",
+	}
+
 	switch req.Action {
-	case models.JOIN, models.READY, models.CANCEL, models.START:
+	case models.JOIN:
+		_, err := h.roomUsecase.AddPlayerToRoom(roomId, mockPlayer) 
+		if err != nil {
+			return c.JSON(http.StatusInternalServerError, "Failed to add player to room")
+		}
+
+		return c.NoContent(http.StatusNoContent)
+
+	case models.READY, models.CANCEL, models.START:
 		// This is a simple mock that always returns success for valid actions.
 		// It does not implement stateful logic for errors like 403 or 409.
 		return c.NoContent(http.StatusNoContent)
