@@ -24,3 +24,19 @@ func (h *Handler) GetRooms(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, rooms)
 }
+
+func (h *Handler) PostRoomsActions(c echo.Context) error {
+	var req models.PostRoomsActionsJSONRequestBody
+	if err := c.Bind(&req); err != nil {
+		return c.JSON(http.StatusBadRequest, "Invalid request body")
+	}
+
+	switch req.Action {
+	case models.JOIN, models.READY, models.CANCEL, models.START:
+		// This is a simple mock that always returns success for valid actions.
+		// It does not implement stateful logic for errors like 403 or 409.
+		return c.NoContent(http.StatusNoContent)
+	default:
+		return c.JSON(http.StatusBadRequest, "Invalid action.")
+	}
+}

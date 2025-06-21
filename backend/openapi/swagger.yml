@@ -54,6 +54,37 @@ paths:
                   $ref: '#/components/schemas/Room'
         '500':
           description: Internal server error
+  /rooms/actions:
+    post:
+      summary: Perform an action on a room
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum:
+                    - JOIN
+                    - READY
+                    - CANCEL
+                    - START
+                  example: "JOIN"
+              required:
+                - action
+      responses:
+        '204':
+          description: Action successful
+        '400':
+          description: Invalid request
+        '403':
+          description: Forbidden (e.g. permission denied for START)
+        '409':
+          description: Conflict (The action cannot be performed in the current state)
+        '500':
+          description: Internal server error
 
 components:
   schemas:
