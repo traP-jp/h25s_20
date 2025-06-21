@@ -15,8 +15,9 @@
 <script setup lang="ts">
 import { roomData } from "@/lib/sample-data";
 import RoomButton from "@/components/RoomButton.vue";
+import type { Room } from "@/lib/sample-data";
 
-function handleRoomClick(room) {
+function handleRoomClick(room: Room) {
   console.log("Room clicked:", room);
 }
 </script>
