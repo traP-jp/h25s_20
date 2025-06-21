@@ -40,6 +40,20 @@ paths:
           description: Username already exists
         '500':
           description: Internal server error
+  /rooms:
+    get:
+      summary: Get a list of rooms
+      responses:
+        '200':
+          description: A list of rooms
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Room'
+        '500':
+          description: Internal server error
 
 components:
   schemas:
@@ -56,3 +70,25 @@ components:
       required:
         - username
         - password
+    Room:
+      type: object
+      properties:
+        roomId:
+          type: integer
+          example: 1
+        roomName:
+          type: string
+          example: "Room 1"
+        users:
+          type: array
+          items:
+            type: string
+            example: "player1"
+        isOpened:
+          type: boolean
+          example: true
+      required:
+        - roomId
+        - roomName
+        - users
+        - isOpened
