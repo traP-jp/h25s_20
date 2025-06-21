@@ -56,17 +56,7 @@ func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
 	h.manager.AddClient(clientID, userID, conn, cancel)
 
 	// 接続完了メッセージを送信
-	welcomeMessage := wsManager.NotificationMessage{
-		Event: "connection",
-		Content: map[string]interface{}{
-			"client_id": clientID,
-			"user_id":   userID,
-			"message":   "Connected successfully",
-			"timestamp": time.Now().Unix(),
-		},
-	}
-
-	if err := h.manager.NotifyUser(userID, welcomeMessage.Event, welcomeMessage.Content); err != nil {
+	if err := h.SendConnectionEvent(userID, clientID, "Connected successfully", time.Now().Unix()); err != nil {
 		log.Error().Err(err).Int("user_id", userID).Msg("Failed to send welcome message")
 	}
 
@@ -162,6 +152,7 @@ func (h *WebSocketHandler) SendStandardEvent(roomID int, event string, userID in
 }
 
 // SendBoardUpdateEvent sends a board update event to the room
+// 非推奨: SendBoardUpdateEventTypedを使用してください
 func (h *WebSocketHandler) SendBoardUpdateEvent(roomID int, userID int, userName string, board interface{}, gainScore int) {
 	content := wsManager.BoardUpdateContent{
 		StandardEventContent: wsManager.StandardEventContent{
@@ -174,4 +165,48 @@ func (h *WebSocketHandler) SendBoardUpdateEvent(roomID int, userID int, userName
 		GainScore: gainScore,
 	}
 	h.BroadcastToRoom(roomID, "board_updated", content)
+}
+
+// 新しい統一されたイベント送信メソッド群
+
+// SendConnectionEvent sends a connection event to a user
+func (h *WebSocketHandler) SendConnectionEvent(userID int, clientID string, message string, timestamp int64) error {
+	event := wsManager.NewConnectionEvent(clientID, userID, message, timestamp)
+	return h.manager.SendEventToUser(userID, event)
+}
+
+// SendPlayerEventToRoom sends a player event to all room members
+func (h *WebSocketHandler) SendPlayerEventToRoom(roomID int, eventType string, userID int, userName string) {
+	event := wsManager.NewPlayerEvent(eventType, userID, userName, roomID)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+// SendGameStartEventToRoom sends a game start event to all room members
+func (h *WebSocketHandler) SendGameStartEventToRoom(roomID int, message string) {
+	event := wsManager.NewGameStartEvent(roomID, message)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+// SendCountdownStartEventToRoom sends a countdown start event to all room members
+func (h *WebSocketHandler) SendCountdownStartEventToRoom(roomID int, message string, countdown int) {
+	event := wsManager.NewCountdownStartEvent(roomID, message, countdown)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+// SendCountdownEventToRoom sends a countdown event to all room members
+func (h *WebSocketHandler) SendCountdownEventToRoom(roomID int, count int) {
+	event := wsManager.NewCountdownEvent(roomID, count)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+// SendBoardUpdateEventTyped sends a typed board update event to all room members
+func (h *WebSocketHandler) SendBoardUpdateEventTyped(roomID int, userID int, userName string, board wsManager.BoardData, gainScore int) {
+	event := wsManager.NewBoardUpdateEvent(userID, userName, roomID, board, gainScore)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+// SendGameStartBoardEventToRoom sends a game start event with board data to all room members
+func (h *WebSocketHandler) SendGameStartBoardEventToRoom(roomID int, message string, board wsManager.BoardData) {
+	event := wsManager.NewGameStartBoardEvent(roomID, message, board)
+	h.manager.SendEventToRoom(roomID, event)
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kaitoyama/kaitoyama-server-template/internal/domain"
+	wsManager "github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/websocket"
 	"github.com/kaitoyama/kaitoyama-server-template/openapi/models"
 	"github.com/labstack/echo/v4"
 )
@@ -52,11 +53,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 		// WebSocketでルーム全員に通知
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.BroadcastToRoom(roomId, "player_joined", map[string]interface{}{
-				"user_id":   mockPlayer.ID,
-				"user_name": mockPlayer.UserName,
-				"room_id":   roomId,
-			})
+			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerJoined, mockPlayer.ID, mockPlayer.UserName)
 		}
 		return c.NoContent(http.StatusNoContent)
 
@@ -68,11 +65,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 			})
 		}
 		// WebSocketでルーム全員に通知
-		h.WebSocketHandler.BroadcastToRoom(roomId, "player_ready", map[string]interface{}{
-			"user_id":   mockPlayer.ID,
-			"user_name": mockPlayer.UserName,
-			"room_id":   roomId,
-		})
+		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerReady, mockPlayer.ID, mockPlayer.UserName)
 		return c.NoContent(http.StatusNoContent)
 
 	case models.CANCEL:
@@ -83,11 +76,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 			})
 		}
 
-		h.WebSocketHandler.BroadcastToRoom(roomId, "player_canceled", map[string]interface{}{
-			"user_id":   mockPlayer.ID,
-			"user_name": mockPlayer.UserName,
-			"room_id":   roomId,
-		})
+		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerCanceled, mockPlayer.ID, mockPlayer.UserName)
 		return c.NoContent(http.StatusNoContent)
 
 	case models.START:
@@ -114,10 +103,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 		// WebSocketでルーム全員にゲーム開始を通知
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.BroadcastToRoom(roomId, "game_started", map[string]interface{}{
-				"room_id": roomId,
-				"message": "Game has started",
-			})
+			h.WebSocketHandler.SendGameStartEventToRoom(roomId, "Game has started")
 		}
 
 		// カウントダウンと最初のボード生成を別のgoroutineで実行
@@ -141,11 +127,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 		// WebSocketでの通知
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.BroadcastToRoom(roomId, "player_left", map[string]interface{}{
-				"user_id":   mockPlayer.ID,
-				"user_name": mockPlayer.UserName,
-				"room_id":   roomId,
-			})
+			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerLeft, mockPlayer.ID, mockPlayer.UserName)
 		}
 
 		return c.NoContent(http.StatusNoContent)
@@ -159,11 +141,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		// WebSocketでルーム全員に通知
-		h.WebSocketHandler.BroadcastToRoom(roomId, "result_closed", map[string]interface{}{
-			"user_id":   mockPlayer.ID,
-			"user_name": mockPlayer.UserName,
-			"room_id":   roomId,
-		})
+		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventResultClosed, mockPlayer.ID, mockPlayer.UserName)
 		return c.NoContent(http.StatusNoContent)
 
 	default:
@@ -248,12 +226,12 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 
 	// 成功時はWebSocketでルーム全体に盤面更新を通知
 	if h.WebSocketHandler != nil {
-		boardData := map[string]interface{}{
-			"content": content,
-			"version": board.Version,
-			"size":    board.Size,
+		boardData := wsManager.BoardData{
+			Content: content,
+			Version: board.Version,
+			Size:    board.Size,
 		}
-		h.WebSocketHandler.SendBoardUpdateEvent(roomId, mockPlayer.ID, mockPlayer.UserName, boardData, gainScore)
+		h.WebSocketHandler.SendBoardUpdateEventTyped(roomId, mockPlayer.ID, mockPlayer.UserName, boardData, gainScore)
 	}
 
 	// HTTPレスポンス（提出者に対する結果）
@@ -309,20 +287,15 @@ func (h *Handler) GetRoomsRoomIdResult(c echo.Context, roomId int) error {
 // handleGameStart はゲーム開始時のカウントダウンと最初のボード生成・送信を処理する
 func (h *Handler) handleGameStart(roomID int) {
 	// カウントダウンを開始する通知を送信
-	if h.wsManager != nil {
-		h.wsManager.NotifyRoom(roomID, "countdown_start", map[string]interface{}{
-			"message":   "Game starting in 3 seconds",
-			"countdown": 3,
-		})
+	if h.WebSocketHandler != nil {
+		h.WebSocketHandler.SendCountdownStartEventToRoom(roomID, "Game starting in 3 seconds", 3)
 	}
 
 	// 3秒のカウントダウン
 	for i := 3; i > 0; i-- {
 		time.Sleep(1 * time.Second)
-		if h.wsManager != nil {
-			h.wsManager.NotifyRoom(roomID, "countdown", map[string]interface{}{
-				"count": i,
-			})
+		if h.WebSocketHandler != nil {
+			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
 		}
 	}
 
@@ -350,14 +323,12 @@ func (h *Handler) handleGameStart(roomID int) {
 	}
 
 	// ゲーム開始とボード情報を送信
-	if h.wsManager != nil {
-		h.wsManager.NotifyRoom(roomID, "game_start", map[string]interface{}{
-			"message": "Game started!",
-			"board": map[string]interface{}{
-				"content": content,
-				"version": newBoard.Version,
-				"size":    newBoard.Size,
-			},
-		})
+	if h.WebSocketHandler != nil {
+		boardData := wsManager.BoardData{
+			Content: content,
+			Version: newBoard.Version,
+			Size:    newBoard.Size,
+		}
+		h.WebSocketHandler.SendGameStartBoardEventToRoom(roomID, "Game started!", boardData)
 	}
 }

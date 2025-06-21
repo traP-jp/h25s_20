@@ -24,12 +24,13 @@ type Manager struct {
 	mutex       sync.RWMutex
 }
 
+// 後方互換性のため残す（非推奨）
 type NotificationMessage struct {
 	Event   string      `json:"event"`
 	Content interface{} `json:"content"`
 }
 
-// WebSocketイベントの標準化された構造体
+// 非推奨: 新しいWebSocketEventとイベント固有の構造体を使用してください
 type StandardEventContent struct {
 	UserID   int         `json:"user_id,omitempty"`
 	UserName string      `json:"user_name,omitempty"`
@@ -38,7 +39,7 @@ type StandardEventContent struct {
 	Data     interface{} `json:"data,omitempty"`
 }
 
-// ボード更新用の専用構造体
+// 非推奨: 新しいBoardUpdateEventContentを使用してください
 type BoardUpdateContent struct {
 	StandardEventContent
 	Board     interface{} `json:"board"`
@@ -402,4 +403,87 @@ func (m *Manager) GetRoomConnectionStats(roomID int) map[string]interface{} {
 		"room_id":         roomID,
 		"connected_count": m.GetRoomClientCount(roomID),
 	}
+}
+
+// 新しい統一されたイベント送信メソッド群
+
+// SendEvent sends a structured WebSocketEvent to all clients
+func (m *Manager) SendEvent(event WebSocketEvent) {
+	data, err := json.Marshal(event)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal WebSocketEvent")
+		return
+	}
+
+	m.mutex.RLock()
+	clients := make([]*Client, 0, len(m.clients))
+	for _, client := range m.clients {
+		clients = append(clients, client)
+	}
+	m.mutex.RUnlock()
+
+	for _, client := range clients {
+		go m.sendToClient(client.ID, client, data)
+	}
+
+	log.Info().
+		Str("event", event.Event).
+		Int("client_count", len(clients)).
+		Msg("Sent structured event to all clients")
+}
+
+// SendEventToRoom sends a structured WebSocketEvent to room participants
+func (m *Manager) SendEventToRoom(roomID int, event WebSocketEvent) {
+	data, err := json.Marshal(event)
+	if err != nil {
+		log.Error().Err(err).Msg("Failed to marshal WebSocketEvent")
+		return
+	}
+
+	m.mutex.RLock()
+	clients, exists := m.roomClients[roomID]
+	if !exists {
+		m.mutex.RUnlock()
+		log.Warn().Int("room_id", roomID).Msg("No clients in room")
+		return
+	}
+	clientsCopy := make([]*Client, len(clients))
+	copy(clientsCopy, clients)
+	m.mutex.RUnlock()
+
+	for _, client := range clientsCopy {
+		go m.sendToClient(client.ID, client, data)
+	}
+
+	log.Info().
+		Str("event", event.Event).
+		Int("room_id", roomID).
+		Int("client_count", len(clientsCopy)).
+		Msg("Sent structured event to room clients")
+}
+
+// SendEventToUser sends a structured WebSocketEvent to a specific user
+func (m *Manager) SendEventToUser(userID int, event WebSocketEvent) error {
+	data, err := json.Marshal(event)
+	if err != nil {
+		return err
+	}
+
+	m.mutex.RLock()
+	client, exists := m.userClients[userID]
+	if !exists {
+		m.mutex.RUnlock()
+		log.Warn().Int("user_id", userID).Msg("User not connected via WebSocket")
+		return nil
+	}
+	m.mutex.RUnlock()
+
+	go m.sendToClient(client.ID, client, data)
+
+	log.Info().
+		Str("event", event.Event).
+		Int("user_id", userID).
+		Msg("Sent structured event to user")
+
+	return nil
 }
