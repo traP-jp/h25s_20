@@ -4,7 +4,18 @@
 
 package db
 
+import (
+	"database/sql"
+)
+
+type Score struct {
+	ID     int32 `json:"id"`
+	UserID int32 `json:"user_id"`
+	Value  int32 `json:"value"`
+}
+
 type User struct {
-	ID       int32  `json:"id"`
-	Username string `json:"username"`
+	ID           int32          `json:"id"`
+	Username     string         `json:"username"`
+	PasswordHash sql.NullString `json:"password_hash"`
 }

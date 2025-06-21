@@ -18,6 +18,19 @@ func (q *Queries) CreateUser(ctx context.Context, username string) (sql.Result, 
 	return q.db.ExecContext(ctx, CreateUser, username)
 }
 
+const CreateUserWithPassword = `-- name: CreateUserWithPassword :execresult
+INSERT INTO user (username,password_hash) VALUES(?,?)
+`
+
+type CreateUserWithPasswordParams struct {
+	Username     string         `json:"username"`
+	PasswordHash sql.NullString `json:"password_hash"`
+}
+
+func (q *Queries) CreateUserWithPassword(ctx context.Context, arg CreateUserWithPasswordParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, CreateUserWithPassword, arg.Username, arg.PasswordHash)
+}
+
 const DeleteUser = `-- name: DeleteUser :exec
 DELETE FROM user WHERE id = ?
 `
@@ -28,18 +41,18 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 }
 
 const GetUser = `-- name: GetUser :one
-SELECT id, username FROM user WHERE id = ?
+SELECT id, username, password_hash FROM user WHERE id = ?
 `
 
 func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 	row := q.db.QueryRowContext(ctx, GetUser, id)
 	var i User
-	err := row.Scan(&i.ID, &i.Username)
+	err := row.Scan(&i.ID, &i.Username, &i.PasswordHash)
 	return i, err
 }
 
 const ListUsers = `-- name: ListUsers :many
-SELECT id, username FROM user
+SELECT id, username, password_hash FROM user
 `
 
 func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
@@ -51,7 +64,7 @@ func (q *Queries) ListUsers(ctx context.Context) ([]User, error) {
 	items := []User{}
 	for rows.Next() {
 		var i User
-		if err := rows.Scan(&i.ID, &i.Username); err != nil {
+		if err := rows.Scan(&i.ID, &i.Username, &i.PasswordHash); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

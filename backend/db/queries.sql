@@ -1,6 +1,9 @@
 -- name: CreateUser :execresult
 INSERT INTO user (username) VALUES (?);
 
+-- name: CreateUserWithPassword :execresult
+INSERT INTO user (username,password_hash) VALUES(?,?); 
+
 -- name: GetUser :one
 SELECT * FROM user WHERE id = ?;
 
