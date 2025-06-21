@@ -3,7 +3,7 @@
     <div>
       <button
         :disabled="room.status === 'closed'"
-        @click="$emit('click')"
+        @click="emit('click')"
         :class="[
           $style.button,
           room.status === 'closed' ? $style.closed : $style.open,
@@ -18,11 +18,15 @@
 </template>
 
 <script setup lang="ts">
-import { defineProps } from "vue";
+import { defineProps, defineEmits } from "vue";
 import type { Room } from "@/lib/sample-data";
 
 defineProps<{
   room: Room;
+}>();
+
+const emit = defineEmits<{
+  click: [];
 }>();
 </script>
 
