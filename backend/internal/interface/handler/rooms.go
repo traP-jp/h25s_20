@@ -39,6 +39,14 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"error": "Failed to join room: " + err.Error(),
 			})
 		}
+		// WebSocketでルーム全員に通知
+		if h.WebSocketHandler != nil {
+			h.WebSocketHandler.BroadcastToRoom(roomId, "player_joined", map[string]interface{}{
+				"user_id":   mockPlayer.ID,
+				"user_name": mockPlayer.UserName,
+				"room_id":   roomId,
+			})
+		}
 		return c.NoContent(http.StatusNoContent)
 
 	case models.READY:
@@ -48,6 +56,12 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"error": "Failed to update ready status: " + err.Error(),
 			})
 		}
+		// WebSocketでルーム全員に通知
+		h.WebSocketHandler.BroadcastToRoom(roomId, "player_ready", map[string]interface{}{
+			"user_id":   mockPlayer.ID,
+			"user_name": mockPlayer.UserName,
+			"room_id":   roomId,
+		})
 		return c.NoContent(http.StatusNoContent)
 
 	case models.CANCEL:
@@ -81,10 +95,16 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"error": "Cannot start game: " + err.Error(),
 			})
 		}
+		// WebSocketでルーム全員にゲーム開始を通知
+		if h.WebSocketHandler != nil {
+			h.WebSocketHandler.BroadcastToRoom(roomId, "game_started", map[string]interface{}{
+				"room_id": roomId,
+				"message": "Game has started",
+			})
+		}
 
 		// カウントダウンと最初のボード生成を別のgoroutineで実行
 		go h.handleGameStart(roomId)
-
 		return c.NoContent(http.StatusNoContent)
 
 	case models.ABORT:
@@ -163,25 +183,24 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 		})
 	}
 
-	currentBoard := &room.GameBoards[len(room.GameBoards)-1]
-
-	// 数式を検証し、盤面を更新
-	domain.AttemptMove(currentBoard, req.Formula)
+	board, gainScore, err := h.roomUsecase.ApplyFormula(roomId, mockPlayer.ID, req.Formula)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+	}
 
 	// 盤面データを1次元配列に変換
-	content := make([]int, 0, currentBoard.Size*currentBoard.Size)
-	for i := 0; i < currentBoard.Size; i++ {
-		for j := 0; j < currentBoard.Size; j++ {
-			content = append(content, currentBoard.Board[i][j])
+	content := make([]int, 0, board.Size*board.Size)
+	for i := 0; i < board.Size; i++ {
+		for j := 0; j < board.Size; j++ {
+			content = append(content, board.Board[i][j])
 		}
 	}
 
-	// TODO: 実際のスコア計算ロジックを実装
-	gainScore := 10
-
 	response := models.Board{
 		Content:   content,
-		Version:   currentBoard.Version,
+		Version:   board.Version,
 		GainScore: gainScore,
 	}
 
