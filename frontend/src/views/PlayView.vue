@@ -25,16 +25,22 @@
     <div :class="$style.inputbox">
       <MathInput />
     </div>
+    <button @click="showModalTest = true">モーダルのテスト</button>
+    <OverlayModal v-if="showModalTest" @close="showModalTest = false">
+      <!-- ここに Component を差し込む -->
+    </OverlayModal>
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import { roomData } from "@/lib/sample-data";
 
 import OpponentInfo from "@/components/playgame/OpponentInfo.vue";
 import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
 import MathInput from "@/components/playgame/MathInput.vue";
 import MyInfo from "@/components/playgame/MyInfo.vue";
+import OverlayModal from "@/components/OverlayModal.vue";
 
 const players = [
   { icon: "/images/player1.png", name: "Player 01", score: 30 },
@@ -44,6 +50,8 @@ const players = [
 function handleRoomClick(room: Room) {
   console.log("Room clicked:", room);
 }
+
+const showModalTest = ref(false);
 </script>
 
 <style module>
