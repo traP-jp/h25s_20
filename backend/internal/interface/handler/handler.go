@@ -11,6 +11,7 @@ type Handler struct {
 	healthUsecase       usecase.HealthUsecase
 	roomUsecase         *usecase.RoomUsecase
 	notificationService *notification.Service
+  WebSocketHandler *WebSocketHandler
 }
 
 func (h *Handler) GetHealth(c echo.Context) error {

@@ -13,12 +13,12 @@ export type Result = {
 };
 
 export type Player = {
-  id: number;
+  id: string;
   isReady: boolean;
 };
 
 export type PlayerScore = {
   id: number;
-  playerId: number;
+  playerId: string;
   score: number;
 };

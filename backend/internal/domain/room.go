@@ -92,26 +92,28 @@ func NewBoard() GameBoard {
 	return *gb
 }
 
-func AttemptMove(gb *GameBoard, expression string) {
-	// 使われている数字が盤面にあるか
+func AttemptMove(gb *GameBoard, expression string) (bool, string) {
+
 	matches, _ := FindAllMatchingLines(gb, expression)
 	if len(matches) == 0 {
-		fmt.Println("エラー: その計算式で使える数字の組み合わせは、盤面上に見つかりません。")
-
+		return false, "エラー: その計算式で使える数字の組み合わせは、盤面上に見つかりません。"
 	}
-	// 計算結果が10になるか
-	result, err := EvaluateExpression(expression)
+
+	evalResult, err := EvaluateExpression(expression)
 	if err != nil {
-		fmt.Println("エラー: 計算ができませんでした")
+		return false, "エラー: 計算ができませんでした"
 	}
 
 	const epsilon = 1e-9
-	if math.Abs(result-10) > epsilon {
-		fmt.Printf("エラー: 計算結果が10になりません。(結果: %v)\n", result)
+	if math.Abs(evalResult-10) > epsilon {
+		return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %v)", evalResult)
 	}
 
-	// すべての検証をクリアしたら盤面を更新
+	// 検証をクリアしたら盤面を更新
 	gb.UpdateLines(matches)
+
+	// 成功時は true と空のメッセージを返す
+	return true, ""
 }
 
 // 指定の列を1から9のランダムな整数で埋める
