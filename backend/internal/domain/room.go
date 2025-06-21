@@ -1,7 +1,7 @@
 package domain
 
 type Room struct {
-	Id       int
+	ID       int
 	Name     string
 	Boards   []Board
 	IsOpened bool
