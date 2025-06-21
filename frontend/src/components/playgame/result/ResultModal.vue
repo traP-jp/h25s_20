@@ -11,6 +11,6 @@
 
 import OverlayModal from "@/components/OverlayModal.vue";
 import { ref } from "vue";
-const showresultModal = ref(false);
+const showResultModal = ref(false);
 
 </script>
