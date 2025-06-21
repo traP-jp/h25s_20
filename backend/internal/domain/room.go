@@ -90,14 +90,14 @@ func (gb *GameBoard) UpdateLine(LineType string, Index int) error {
 }
 
 // Matches内に保存されている行、列を更新する
-func (gb *GameBoard) UpdateLines(Matches []Matches) error {
-	for _, match := range Matches {
+func (gb *GameBoard) UpdateLines(matches []Matches) error {
+	for _, match := range matches {
 		err := gb.UpdateLine(match.LineType, match.Index)
 		if err != nil {
 			return fmt.Errorf("更新中にエラーが発生しました (%s %d): %w", match.LineType, match.Index, err)
 		}
 	}
-
+	
 	gb.Version++
 	return nil
 }
@@ -137,10 +137,10 @@ func ValidateExpressionNumbers(Expression string, BoardLine []int) (bool, error)
 	return true, nil
 }
 
-// 盤面すべての行,列についてValidateExpressionNumbersを実行して一致する行,列の情報をmatches内に保存
+// 盤面すべての行,列についてValidateExpressionNumbersを実行
 func FindAllMatchingLines(gb *GameBoard, expression string) ([]Matches, bool) {
 	// 見つかったマッチを格納するためのスライスを初期化
-	var Matches []Matches
+	var matches []Matches
 
 	// --- すべての行をチェック ---
 	for i := 0; i < gb.Size; i++ {
@@ -148,7 +148,7 @@ func FindAllMatchingLines(gb *GameBoard, expression string) ([]Matches, bool) {
 		isValid, err := ValidateExpressionNumbers(expression, rowLine)
 		if err == nil && isValid {
 			// 見つかった情報をMatch構造体としてスライスに追加
-			Matches = append(Matches, Matches{LineType: "row", Index: i})
+			matches = append(matches, Matches{LineType: "row", Index: i})
 		}
 	}
 	// --- すべての列をチェック ---
@@ -157,14 +157,14 @@ func FindAllMatchingLines(gb *GameBoard, expression string) ([]Matches, bool) {
 		isValid, err := ValidateExpressionNumbers(expression, colLine)
 
 		if err == nil && isValid {
-			Matches = append(Matches, Matches{LineType: "col", Index: i})
+			matches = append(matches, Matches{LineType: "col", Index: i})
 		}
 	}
-	if len(Matches) == 0 {
+	if len(matches) == 0 {
 		return nil, false
 	}
 	// ループがすべて終わった後、見つかったマッチのリストを返す
-	return Matches, true
+	return matches, true
 }
 
 //指定された行または列を取得
