@@ -1,7 +1,7 @@
 <template>
   <div :class="$style.wrapper">
     <!-- プレビュー -->
-    <div :class="[$style.preview, { [$style.correct]: isCorrect }]">
+    <div :class="[$style.preview]">
       {{ expression }}
     </div>
 
@@ -42,24 +42,19 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import MathInputButton from "./MathInputButton.vue";
-import { defineModel } from "vue";
+import { defineModel, watch } from "vue";
+import { checkMath } from "@/lib/board-update";
 
 const expression = ref("");
-
-import { solvePoland } from "@/lib/solver/solvePoland";
-import { encodePoland } from "@/lib/solver/encodePoland";
-
 const board = defineModel<number[]>("board");
 
-const isCorrect = computed(() => {
-  try {
-    console.log(solvePoland(encodePoland(expression.value)));
-    return solvePoland(encodePoland(expression.value)) === "10";
-  } catch {
-    return false;
-  }
+watch(expression, (newValue) => {
+  if (!board.value) return;
+  const result = checkMath(board.value, newValue);
+  board.value = result["board"];
+  expression.value = result["input"];
 });
 
 const addSymbol = (value: string) => {
