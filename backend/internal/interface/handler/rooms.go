@@ -38,6 +38,14 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"error": "Failed to join room: " + err.Error(),
 			})
 		}
+		// WebSocketでルーム全員に通知
+		if h.WebSocketHandler != nil {
+			h.WebSocketHandler.BroadcastToRoom(roomId, "player_joined", map[string]interface{}{
+				"user_id":   mockPlayer.ID,
+				"user_name": mockPlayer.UserName,
+				"room_id":   roomId,
+			})
+		}
 		return c.NoContent(http.StatusNoContent)
 
 	case models.READY:
@@ -84,6 +92,13 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		if err != nil {
 			return c.JSON(http.StatusConflict, map[string]string{
 				"error": "Cannot start game: " + err.Error(),
+			})
+		}
+		// WebSocketでルーム全員にゲーム開始を通知
+		if h.WebSocketHandler != nil {
+			h.WebSocketHandler.BroadcastToRoom(roomId, "game_started", map[string]interface{}{
+				"room_id": roomId,
+				"message": "Game has started",
 			})
 		}
 		return c.NoContent(http.StatusNoContent)
