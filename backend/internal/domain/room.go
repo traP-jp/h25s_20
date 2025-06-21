@@ -20,7 +20,7 @@ type Result struct {
 	Scores []Playerscore
 }
 
-type Playerscore struct {
+type PlayerScore struct {
 	Id       int
 	PlayerId string
 	Socre    int
