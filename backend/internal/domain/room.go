@@ -2,6 +2,7 @@ package domain
 
 import (
 	"fmt"
+	"math"
 	"math/rand"
 	"regexp"
 	"strconv"
@@ -58,6 +59,28 @@ func NewBoard() GameBoard {
 		gb.PopulateRow(i)
 	}
 	return *gb
+}
+
+func AttemptMove(gb *GameBoard, expression string) {
+	// 使われている数字が盤面にあるか
+	matches, _ := FindAllMatchingLines(gb, expression)
+	if len(matches) == 0 {
+		fmt.Println("エラー: その計算式で使える数字の組み合わせは、盤面上に見つかりません。")
+
+	}
+	// 計算結果が10になるか
+	result, err := EvaluateExpression(expression)
+	if err != nil {
+		fmt.Println("エラー: 計算ができませんでした")
+	}
+
+	const epsilon = 1e-9
+	if math.Abs(result-10) > epsilon {
+		fmt.Printf("エラー: 計算結果が10になりません。(結果: %v)\n", result)
+	}
+
+	// すべての検証をクリアしたら盤面を更新
+	gb.UpdateLines(matches)
 }
 
 // 指定の列を1から9のランダムな整数で埋める
@@ -189,7 +212,7 @@ func (gb *GameBoard) GetLine(linetype string, index int) ([]int, error) {
 	return nil, fmt.Errorf("invalid line type: %s", linetype)
 }
 
-//入力された数式の計算
+// 入力された数式の計算
 func EvaluateExpression(expression string) (float64, error) {
 	eval, err := govaluate.NewEvaluableExpression(expression)
 	if err != nil {
@@ -206,5 +229,3 @@ func EvaluateExpression(expression string) (float64, error) {
 	}
 	return 0, fmt.Errorf("計算結果を数値に変換できませんでした")
 }
-
-
