@@ -53,6 +53,38 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 	return err
 }
 
+const GetTop10Scores = `-- name: GetTop10Scores :many
+SELECT user.username,score.value FROM score JOIN user ON score.user_id = user.id ORDER BY value DESC limit 10
+`
+
+type GetTop10ScoresRow struct {
+	Username string `json:"username"`
+	Value    int32  `json:"value"`
+}
+
+func (q *Queries) GetTop10Scores(ctx context.Context) ([]GetTop10ScoresRow, error) {
+	rows, err := q.db.QueryContext(ctx, GetTop10Scores)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []GetTop10ScoresRow{}
+	for rows.Next() {
+		var i GetTop10ScoresRow
+		if err := rows.Scan(&i.Username, &i.Value); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const GetUser = `-- name: GetUser :one
 SELECT id, username, password_hash FROM user WHERE id = ?
 `
