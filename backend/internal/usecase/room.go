@@ -1,7 +1,6 @@
 package usecase
 
 import (
-	"errors"
 	"fmt"
 	"sync"
 
@@ -164,68 +163,6 @@ func (r *RoomUsecase) CloseResult(roomID int, playerID int) (*domain.Room, error
 	return room, nil
 }
 
-// 数式を受け取りスコアとボードの更新を行う（先着処理対応）
-func (r *RoomUsecase) ApplyFormula(roomID int, playerID int, formula string) (*domain.GameBoard, int, error) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	//ルームが存在するかをチェック
-	room, exists := r.rooms[roomID]
-	if !exists {
-		return nil, 0, fmt.Errorf("room with ID %d not found", roomID)
-	}
-
-	// プレイヤーが参加しているかをチェック
-	playerInRoom := false
-	for _, p := range room.Players {
-		if p.ID == playerID {
-			playerInRoom = true
-			break
-		}
-	}
-	if !playerInRoom {
-		return nil, 0, fmt.Errorf("player is not in this room")
-	}
-
-	// ゲーム進行中かをチェック
-	if room.State != domain.StateGameInProgress {
-		return nil, 0, fmt.Errorf("game is not in progress")
-	}
-
-	if len(room.GameBoards) == 0 {
-		return nil, 0, fmt.Errorf("no game board available")
-	}
-	currentBoard := &room.GameBoards[len(room.GameBoards)-1]
-
-	// 先着処理: ボードのバージョンをコピーして楽観的ロック
-	originalVersion := currentBoard.Version
-
-	// AttemptMoveを呼び出し、成否を受け取る
-	success, message := domain.AttemptMove(currentBoard, formula)
-
-	// もし、AttemptMoveの結果が失敗だったら元のボードを送信する
-	if !success {
-		return currentBoard, 0, errors.New(message)
-	}
-
-	// バージョン競合チェック（他のプレイヤーが先に更新していないか）
-	if originalVersion != currentBoard.Version-1 {
-		// 競合が発生した場合、最新のボードを返す
-		return currentBoard, 0, errors.New("エラー: 他のプレイヤーが先に答えを送信しました")
-	}
-
-	// --- 成功した場合のみ、以下の処理を行う ---
-	gainScore := 10
-	for i := range room.Players {
-		if room.Players[i].ID == playerID {
-			room.Players[i].Score += gainScore
-			break
-		}
-	}
-
-	return currentBoard, gainScore, nil
-}
-
 // CompleteCountdown completes the countdown and transitions to game in progress
 func (r *RoomUsecase) CompleteCountdown(roomID int) (*domain.Room, error) {
 	r.mutex.Lock()
@@ -303,6 +240,24 @@ func (r *RoomUsecase) RemovePlayerFromRoom(roomID int, playerID int) (*domain.Ro
 	return room, nil
 }
 
+// EndGame ends the game for the specified room
+func (r *RoomUsecase) EndGame(roomID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	err := room.EndGame()
+	if err != nil {
+		return nil, fmt.Errorf("failed to end game: %w", err)
+	}
+
+	return room, nil
+}
+
 // ApplyFormulaWithVersion はバージョンを考慮した細かい衝突検出付きの数式適用
 func (r *RoomUsecase) ApplyFormulaWithVersion(roomID int, playerID int, formula string, submittedVersion int) (*domain.GameBoard, int, error) {
 	r.mutex.Lock()
@@ -337,14 +292,22 @@ func (r *RoomUsecase) ApplyFormulaWithVersion(roomID int, playerID int, formula 
 	currentBoard := &room.GameBoards[len(room.GameBoards)-1]
 
 	// バージョン付きの細かい衝突検出を実行
-	success, errMessage := domain.AttemptMoveWithVersion(currentBoard, formula, submittedVersion)
+	success, errMessage, matchCount := domain.AttemptMoveWithVersion(currentBoard, formula, submittedVersion)
 
 	if !success {
 		return nil, 0, fmt.Errorf(errMessage)
 	}
 
-	// スコア計算は簡易的に実装（実際の仕様に合わせて調整）
-	gainScore := 10
+	// スコア計算: 消した組数 * 10点
+	gainScore := matchCount * 10
+
+	// プレイヤーのスコアに加算
+	for i := range room.Players {
+		if room.Players[i].ID == playerID {
+			room.Players[i].Score += gainScore
+			break
+		}
+	}
 
 	return currentBoard, gainScore, nil
 }

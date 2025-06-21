@@ -46,8 +46,9 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		if h.WebSocketHandler != nil {
 			err = h.WebSocketHandler.JoinRoom(mockPlayer.ID, roomId)
 			if err != nil {
-				// WebSocketのjoinに失敗してもHTTPレスポンスはエラーにしない（ログ出力のみ）
-				// WebSocket接続がない場合もあるため
+				return c.JSON(http.StatusInternalServerError, map[string]string{
+					"error": "Failed to join WebSocket room: " + err.Error(),
+				})
 			}
 		}
 
@@ -107,6 +108,8 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		// カウントダウンと最初のボード生成を別のgoroutineで実行
+		// StartGame()が成功した時点でStateがCountdownに変わっているため、
+		// 重複実行は防止されている
 		go h.handleGameStart(roomId)
 		return c.NoContent(http.StatusNoContent)
 
@@ -115,7 +118,9 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		if h.WebSocketHandler != nil {
 			err := h.WebSocketHandler.LeaveRoom(mockPlayer.ID)
 			if err != nil {
-				// WebSocketのleaveに失敗してもHTTPレスポンスはエラーにしない（ログ出力のみ）
+				return c.JSON(http.StatusInternalServerError, map[string]string{
+					"error": "Failed to leave WebSocket room: " + err.Error(),
+				})
 			}
 		}
 
@@ -330,5 +335,51 @@ func (h *Handler) handleGameStart(roomID int) {
 			Size:    newBoard.Size,
 		}
 		h.WebSocketHandler.SendGameStartBoardEventToRoom(roomID, "Game started!", boardData)
+	}
+
+	// 120秒タイマーを開始（別goroutineで実行）
+	go h.handleGameTimer(roomID)
+}
+
+// handleGameTimer は120秒のゲームタイマーとラスト10秒のカウントダウンを処理する
+func (h *Handler) handleGameTimer(roomID int) {
+	// 110秒待機（120秒 - 10秒のカウントダウン）
+	time.Sleep(110 * time.Second)
+
+	// ゲームがまだ進行中かチェック
+	room, err := h.roomUsecase.GetRoomByID(roomID)
+	if err != nil || room.State != domain.StateGameInProgress {
+		return // ゲームが既に終了している場合は何もしない
+	}
+
+	// ラスト10秒のカウントダウン開始を通知
+	if h.WebSocketHandler != nil {
+		h.WebSocketHandler.SendCountdownStartEventToRoom(roomID, "Game ending in 10 seconds", 10)
+	}
+
+	// 10秒のカウントダウン
+	for i := 10; i > 0; i-- {
+		time.Sleep(1 * time.Second)
+
+		// 各秒でゲームがまだ進行中かチェック
+		room, err := h.roomUsecase.GetRoomByID(roomID)
+		if err != nil || room.State != domain.StateGameInProgress {
+			return // ゲームが既に終了している場合は中断
+		}
+
+		if h.WebSocketHandler != nil {
+			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
+		}
+	}
+
+	// タイマー終了、ゲームを終了する
+	_, err = h.roomUsecase.EndGame(roomID)
+	if err != nil {
+		return
+	}
+
+	// ゲーム終了をWebSocketで通知
+	if h.WebSocketHandler != nil {
+		h.WebSocketHandler.SendGameEndEventToRoom(roomID, "Time's up! Game ended.")
 	}
 }

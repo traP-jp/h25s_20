@@ -18,6 +18,7 @@ const (
 	EventCountdown      = "countdown"
 	EventBoardUpdated   = "board_updated"
 	EventResultClosed   = "result_closed"
+	EventGameEnded      = "game_ended"
 )
 
 // 統一されたWebSocketイベントの基本構造
@@ -188,6 +189,18 @@ func NewBoardUpdateEvent(userID int, userName string, roomID int, board BoardDat
 			},
 			Board:     board,
 			GainScore: gainScore,
+		},
+	}
+}
+
+func NewGameEndEvent(roomID int, message string) WebSocketEvent {
+	return WebSocketEvent{
+		Event: EventGameEnded,
+		Content: GameStartEventContent{
+			BaseEventContent: BaseEventContent{
+				RoomID:  roomID,
+				Message: message,
+			},
 		},
 	}
 }

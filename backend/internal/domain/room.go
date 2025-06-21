@@ -104,58 +104,34 @@ func NewBoard() GameBoard {
 	return *gb
 }
 
-func AttemptMove(gb *GameBoard, expression string) (bool, string) {
-
-	matches, _ := FindAllMatchingLines(gb, expression)
-	if len(matches) == 0 {
-		return false, "エラー: その計算式で使える数字の組み合わせは、盤面上に見つかりません。"
-	}
-
-	evalResult, err := EvaluateExpression(expression)
-	if err != nil {
-		return false, "エラー: 計算ができませんでした"
-	}
-
-	const epsilon = 1e-9
-	if math.Abs(evalResult-10) > epsilon {
-		return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %v)", evalResult)
-	}
-
-	// 検証をクリアしたら盤面を更新
-	gb.UpdateLines(matches)
-
-	// 成功時は true と空のメッセージを返す
-	return true, ""
-}
-
 // AttemptMoveWithVersion はバージョンを考慮した細かい衝突検出付きの処理（新仕様）
-func AttemptMoveWithVersion(gb *GameBoard, expression string, submittedVersion int) (bool, string) {
+func AttemptMoveWithVersion(gb *GameBoard, expression string, submittedVersion int) (bool, string, int) {
 	matches, found := FindAllMatchingLinesWithSets(gb, expression)
 	if !found {
-		return false, "エラー: その計算式で使える数字の組み合わせは、盤面上に見つかりません。"
+		return false, "エラー: その計算式で使える数字の組み合わせは、盤面上に見つかりません。", 0
 	}
 
 	// バージョン衝突チェック（細かい衝突検出）
 	hasConflict, conflictMsg := gb.CheckConflictWithPositions(submittedVersion, matches)
 	if hasConflict {
-		return false, conflictMsg
+		return false, conflictMsg, 0
 	}
 
 	evalResult, err := EvaluateExpression(expression)
 	if err != nil {
-		return false, "エラー: 計算ができませんでした"
+		return false, "エラー: 計算ができませんでした", 0
 	}
 
 	const epsilon = 1e-9
 	if math.Abs(evalResult-10) > epsilon {
-		return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %v)", evalResult)
+		return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %v)", evalResult), 0
 	}
 
 	// 検証をクリアしたら盤面を更新（新仕様）
 	gb.UpdateLinesWithPositions(matches)
 
-	// 成功時は true と空のメッセージを返す
-	return true, ""
+	// 成功時は true と空のメッセージ、マッチ数を返す
+	return true, "", len(matches)
 }
 
 // 指定の列を1から9のランダムな整数で埋める
@@ -187,21 +163,6 @@ func (gb *GameBoard) UpdateLine(linetype string, index int) error {
 	default:
 		return fmt.Errorf("linetypeは'row'または'col'である必要があります")
 	}
-}
-
-// UpdateLines は指定された行または列を新しいランダムな数字で更新します。
-func (gb *GameBoard) UpdateLines(matches []Matches) error {
-	for _, match := range matches {
-		err := gb.UpdateLine(match.Linetype, match.Index)
-		if err != nil {
-			return fmt.Errorf("更新中にエラーが発生しました (%s %d): %w", match.Linetype, match.Index, err)
-		}
-	}
-
-	gb.Version++
-	// 変更履歴を記録
-	gb.ChangeHistory[gb.Version] = matches
-	return nil
 }
 
 // UpdateLinesWithPositions 新仕様：複数のマス位置を直接更新
@@ -271,71 +232,6 @@ func (gb *GameBoard) CheckConflictWithPositions(submittedVersion int, formulaMat
 	}
 
 	return false, ""
-}
-
-// 入力された数式に含まれる数字が指定された盤面上の行または列に一致するかを判定する
-func ValidateExpressionNumbers(expression string, boardLine []int) (bool, error) {
-	// 数式からすべての数字を文字列として抽出する
-	re := regexp.MustCompile(`\d+`) // 1文字以上の数字にマッチする正規表現
-	numStringsInExpr := re.FindAllString(expression, -1)
-
-	if len(numStringsInExpr) == 0 {
-		return false, fmt.Errorf("式に数字が含まれていません")
-	}
-	// 盤面の行にある数字の出現回数を数える
-	boardCounts := make(map[int]int)
-	for _, num := range boardLine {
-		boardCounts[num]++
-	}
-	// 数式にある数字の出現回数を数える
-	exprCounts := make(map[int]int)
-	for _, s := range numStringsInExpr {
-		num, err := strconv.Atoi(s)
-		if err != nil { // 数字の変換に失敗した場合、エラーを返す
-			return false, fmt.Errorf("数字の変換に失敗しました: %v", err)
-		}
-		exprCounts[num]++
-	}
-	// 数式の数字が、盤面の数字の個数のに一致するかチェック
-	for NumInExpr, countInExpr := range exprCounts {
-		countInBoard, ok := boardCounts[NumInExpr]
-		// 盤面に存在しない数字が数式に含まれている場合、falseを返す
-		// また、数式の数字の出現回数が盤面の数字の出現回数にあわない場合もfalseを返す
-		if !ok || countInExpr != countInBoard {
-			return false, nil
-		}
-	}
-	return true, nil
-}
-
-// 盤面すべての行,列についてValidateExpressionNumbersを実行
-func FindAllMatchingLines(gb *GameBoard, expression string) ([]Matches, bool) {
-	// 見つかったマッチを格納するためのスライスを初期化
-	var matches []Matches
-
-	// すべての行をチェック
-	for i := 0; i < gb.Size; i++ {
-		rowLine, _ := gb.GetLine("row", i)
-		isValid, err := ValidateExpressionNumbers(expression, rowLine)
-		if err == nil && isValid {
-			// 見つかった情報をMatch構造体としてスライスに追加
-			matches = append(matches, Matches{Linetype: "row", Index: i})
-		}
-	}
-	// すべての列をチェック
-	for i := 0; i < gb.Size; i++ {
-		colLine, _ := gb.GetLine("col", i)
-		isValid, err := ValidateExpressionNumbers(expression, colLine)
-
-		if err == nil && isValid {
-			matches = append(matches, Matches{Linetype: "col", Index: i})
-		}
-	}
-	if len(matches) == 0 {
-		return nil, false
-	}
-	// ループがすべて終わった後、見つかったマッチのリストを返す
-	return matches, true
 }
 
 // 指定された行または列を取得
