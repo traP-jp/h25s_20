@@ -33,8 +33,8 @@
           <MathInputButton icon="mdi:minus" @click="addToExpression('-')" />
         </div>
         <div :class="$style.symbolRow">
-          <MathInputButton icon="mdi:close" @click="addToExpression('×')" />
-          <MathInputButton icon="mdi:division" @click="addToExpression('÷')" />
+          <MathInputButton icon="mdi:close" @click="addToExpression('*')" />
+          <MathInputButton icon="mdi:division" @click="addToExpression('/')" />
         </div>
       </div>
     </div>
