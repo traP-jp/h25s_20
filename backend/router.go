@@ -49,7 +49,7 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	api := e.Group("/api")
 
 	dbChecker := db.NewDBHealthChecker(database)
-	healthHandler := handler.NewHandler(dbChecker, wsManagerInstance)
+	healthHandler := handler.NewHandler(dbChecker, wsManagerInstance, roomUsecase)
 
 	// Register API handlers with /api prefix
 	openapi.RegisterHandlersWithBaseURL(api, healthHandler, "")

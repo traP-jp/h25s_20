@@ -18,10 +18,12 @@ func (h *Handler) GetHealth(c echo.Context) error {
 	return h.HealthCheck(c)
 }
 
-func NewHandler(dbChecker domain.DatabaseHealthChecker, wsManager *websocket.Manager) *Handler {
+func NewHandler(dbChecker domain.DatabaseHealthChecker, wsManager *websocket.Manager, roomUsecase *usecase.RoomUsecase) *Handler {
+	wsHandler := NewWebSocketHandler(wsManager, roomUsecase)
 	return &Handler{
-		healthUsecase: *usecase.NewHealthUsecase(dbChecker),
-		roomUsecase:   usecase.NewRoomUsecase(),
-		wsManager:     wsManager,
+		healthUsecase:    *usecase.NewHealthUsecase(dbChecker),
+		roomUsecase:      roomUsecase,
+		wsManager:        wsManager,
+		WebSocketHandler: wsHandler,
 	}
 }

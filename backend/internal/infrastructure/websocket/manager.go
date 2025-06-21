@@ -29,6 +29,22 @@ type NotificationMessage struct {
 	Content interface{} `json:"content"`
 }
 
+// WebSocketイベントの標準化された構造体
+type StandardEventContent struct {
+	UserID   int         `json:"user_id,omitempty"`
+	UserName string      `json:"user_name,omitempty"`
+	RoomID   int         `json:"room_id,omitempty"`
+	Message  string      `json:"message,omitempty"`
+	Data     interface{} `json:"data,omitempty"`
+}
+
+// ボード更新用の専用構造体
+type BoardUpdateContent struct {
+	StandardEventContent
+	Board     interface{} `json:"board"`
+	GainScore int         `json:"gain_score"`
+}
+
 func NewManager() *Manager {
 	return &Manager{
 		clients:     make(map[string]*Client),

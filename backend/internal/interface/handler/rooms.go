@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/kaitoyama/kaitoyama-server-template/internal/domain"
@@ -132,7 +133,13 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 			}
 		}
 
-		// ABORTの場合はroomstateを変更せず、WebSocketでの通知のみ行う
+		// プレイヤーをルームから削除
+		_, err := h.roomUsecase.RemovePlayerFromRoom(roomId, mockPlayer.ID)
+		if err != nil {
+			// プレイヤーが見つからない場合でもエラーにしない（既に退出済みの可能性）
+		}
+
+		// WebSocketでの通知
 		if h.WebSocketHandler != nil {
 			h.WebSocketHandler.BroadcastToRoom(roomId, "player_left", map[string]interface{}{
 				"user_id":   mockPlayer.ID,
@@ -168,11 +175,9 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 // PostRoomsRoomIdFormulas submits a formula for calculation
 func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
-	var req models.PostRoomsRoomIdFormulasJSONRequestBody
+	var req models.PostRoomsRoomIdFormulasJSONBody
 	if err := c.Bind(&req); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]string{
-			"error": "Invalid request body",
-		})
+		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
 
 	// TODO: 実際のユーザー認証を実装した後に、ユーザー情報を取得する
@@ -217,8 +222,17 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 		})
 	}
 
-	board, gainScore, err := h.roomUsecase.ApplyFormula(roomId, mockPlayer.ID, req.Formula)
+	// バージョン付きの細かい衝突検出を使用
+	board, gainScore, err := h.roomUsecase.ApplyFormulaWithVersion(roomId, mockPlayer.ID, req.Formula, req.Version)
 	if err != nil {
+		// 衝突エラーの場合は409を返す
+		if strings.Contains(err.Error(), "他のプレイヤーによって更新されています") ||
+			strings.Contains(err.Error(), "無効なバージョンです") {
+			return c.JSON(http.StatusConflict, map[string]string{
+				"error": err.Error(),
+			})
+		}
+		// その他のエラーは400を返す
 		return c.JSON(http.StatusBadRequest, map[string]string{
 			"error": err.Error(),
 		})
@@ -232,13 +246,22 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 		}
 	}
 
-	response := models.Board{
+	// 成功時はWebSocketでルーム全体に盤面更新を通知
+	if h.WebSocketHandler != nil {
+		boardData := map[string]interface{}{
+			"content": content,
+			"version": board.Version,
+			"size":    board.Size,
+		}
+		h.WebSocketHandler.SendBoardUpdateEvent(roomId, mockPlayer.ID, mockPlayer.UserName, boardData, gainScore)
+	}
+
+	// HTTPレスポンス（提出者に対する結果）
+	return c.JSON(http.StatusOK, models.Board{
 		Content:   content,
 		Version:   board.Version,
 		GainScore: gainScore,
-	}
-
-	return c.JSON(http.StatusOK, response)
+	})
 }
 
 // GetRoomsRoomIdResult returns the results of a specific room

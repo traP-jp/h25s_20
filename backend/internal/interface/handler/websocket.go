@@ -147,16 +147,31 @@ func (h *WebSocketHandler) GetRoomConnectedClients(roomID int) int {
 	return h.manager.GetRoomClientCount(roomID)
 }
 
-func (h *WebSocketHandler) HandleFormulaEvent(userID, roomID int, formula string) {
-	board, gainScore, err := h.roomUsecase.ApplyFormula(roomID, userID, formula)
-	if err != nil {
-		h.SendToUser(userID, "formula_error", err.Error())
-		return
+// WebSocketイベント送信のヘルパーメソッド群（HTTP専用方針対応）
+
+// SendStandardEvent sends a standardized event to the room
+func (h *WebSocketHandler) SendStandardEvent(roomID int, event string, userID int, userName string, message string, data interface{}) {
+	content := wsManager.StandardEventContent{
+		UserID:   userID,
+		UserName: userName,
+		RoomID:   roomID,
+		Message:  message,
+		Data:     data,
 	}
-	// 成功時はルーム全体に通知
-	h.BroadcastToRoom(roomID, "formula_applied", map[string]interface{}{
-		"board":      board,
-		"gain_score": gainScore,
-		"user_id":    userID,
-	})
+	h.BroadcastToRoom(roomID, event, content)
+}
+
+// SendBoardUpdateEvent sends a board update event to the room
+func (h *WebSocketHandler) SendBoardUpdateEvent(roomID int, userID int, userName string, board interface{}, gainScore int) {
+	content := wsManager.BoardUpdateContent{
+		StandardEventContent: wsManager.StandardEventContent{
+			UserID:   userID,
+			UserName: userName,
+			RoomID:   roomID,
+			Message:  "Board updated",
+		},
+		Board:     board,
+		GainScore: gainScore,
+	}
+	h.BroadcastToRoom(roomID, "board_updated", content)
 }
