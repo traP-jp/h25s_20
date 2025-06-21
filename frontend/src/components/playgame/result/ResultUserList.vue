@@ -1,0 +1,1 @@
+ResultUserを縦に並べて表示
