@@ -10,6 +10,7 @@ import (
 )
 
 type Querier interface {
+	CreateScore(ctx context.Context, arg CreateScoreParams) (sql.Result, error)
 	CreateUser(ctx context.Context, username string) (sql.Result, error)
 	CreateUserWithPassword(ctx context.Context, arg CreateUserWithPasswordParams) (sql.Result, error)
 	DeleteUser(ctx context.Context, id int32) error

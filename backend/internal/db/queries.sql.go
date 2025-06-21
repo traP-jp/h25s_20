@@ -10,6 +10,19 @@ import (
 	"database/sql"
 )
 
+const CreateScore = `-- name: CreateScore :execresult
+INSERT INTO score (user_id,value) VALUES(?,?)
+`
+
+type CreateScoreParams struct {
+	UserID int32 `json:"user_id"`
+	Value  int32 `json:"value"`
+}
+
+func (q *Queries) CreateScore(ctx context.Context, arg CreateScoreParams) (sql.Result, error) {
+	return q.db.ExecContext(ctx, CreateScore, arg.UserID, arg.Value)
+}
+
 const CreateUser = `-- name: CreateUser :execresult
 INSERT INTO user (username) VALUES (?)
 `
