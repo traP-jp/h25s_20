@@ -2,12 +2,7 @@
   <div :class="$style.container">
     <div :class="$style.header">Select a Room</div>
     <div :class="$style.rooms">
-      <RoomButton
-        v-for="room in roomData"
-        :key="room.id"
-        :room="room"
-        @click="handleRoomClick(room)"
-      />
+      <RoomButton v-for="room in roomData" :key="room.id" :room="room" @click="handleRoomClick(room)" />
     </div>
   </div>
 </template>
@@ -15,7 +10,7 @@
 <script setup lang="ts">
 import { roomData } from "@/lib/sample-data";
 import RoomButton from "@/components/RoomButton.vue";
-import type { Room } from "@/lib/sample-data";
+import type { Room } from "@/lib/types";
 
 function handleRoomClick(room: Room) {
   console.log("Room clicked:", room);
@@ -24,11 +19,9 @@ function handleRoomClick(room: Room) {
 
 <style module>
 .container {
-  width: 500px;
-  height: 100vh;
-  margin: 0 auto;
-  padding: 20px;
-  border: 1px solid var(--border-color, #ccc);
+  width: 360px;
+  height: 100%;
+  margin: 40px auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -38,12 +31,12 @@ function handleRoomClick(room: Room) {
   font-size: 24px;
   font-weight: bold;
   text-align: center;
-  margin-bottom: 30px;
+  margin-bottom: 16px;
 }
 
 .rooms {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  margin: 10px;
 }
 </style>
