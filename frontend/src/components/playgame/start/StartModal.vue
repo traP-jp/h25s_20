@@ -4,7 +4,7 @@
     <!-- ここに Component を差し込む -->
     <div>start modal</div>
     <StartUserList />
-    <StartControl @quit="showStartModal = false" />
+    <StartControl />
   </OverlayModal>
   <button @click="showStartModal= true">startモーダルのテスト</button>
 </template>
@@ -14,7 +14,10 @@
 import OverlayModal from "@/components/OverlayModal.vue";
 import StartUserList from "@/components/playgame/start/StartUserList.vue";
 import StartControl from "@/components/playgame/start/StartControl.vue";
-import { ref } from "vue";
-const showStartModal = ref(false);
+
+import { ref, inject } from "vue";
+
+const showStartModal = inject('showStartModal');
+const showResultModal = inject('showResultModal');
 
 </script>

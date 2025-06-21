@@ -29,12 +29,11 @@
 
     <StartModal />
     <ResultModal />
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, provide } from "vue";
 import { roomData } from "@/lib/sample-data";
 
 import type { Room } from "@/lib/types.ts";
@@ -58,6 +57,9 @@ function handleRoomClick(room: Room) {
 
 const showStartModal = ref(false);
 const showResultModal = ref(false);
+
+provide('showStartModal', showStartModal);
+provide('showResultModal', showResultModal);
 </script>
 
 <style module>

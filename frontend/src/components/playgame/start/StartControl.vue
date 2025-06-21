@@ -4,9 +4,10 @@
   <button v-show="isBtnDisabled" :class="$style.cancelBtn" @click="onClickCancel">キャンセル</button>
 </template>
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, inject } from "vue";
 
-const emit = defineEmits(['quit']);
+const showStartModal = inject('showStartModal');
+const showResultModal = inject('showResultModal');
 
 const BtnMsg = ref("準備OK!");
 const isBtnDisabled = ref(false);
@@ -21,7 +22,7 @@ const onClickMain = () => {
 const onClickQuit = () => {
   // send an event to backend
   // close modal
-  emit('quit');
+  showStartModal.value = false;
 };
 
 const onClickCancel = () => {
