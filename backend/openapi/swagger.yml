@@ -1,6 +1,6 @@
 openapi: 3.0.0
 info:
-  title: Kaitoyama Server API
+  title: hs_25_20_server API
   version: "1.0.0"
 servers:
   - url: 'http://localhost:8080/api'
@@ -22,3 +22,37 @@ paths:
                   status:
                     type: string
                     example: "ok"
+  /users:
+    post:
+      summary: Register a new user
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreate'
+      responses:
+        '201':
+          description: User created successfully
+        '400':
+          description: Invalid request
+        '409':
+          description: Username already exists
+        '500':
+          description: Internal server error
+
+components:
+  schemas:
+    UserCreate:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "testuser"
+        password:
+          type: string
+          description: "SHA256 hashed password"
+          example: "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8"
+      required:
+        - username
+        - password
