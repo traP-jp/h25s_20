@@ -28,7 +28,7 @@ function handleRoomClick(room: Room) {
   height: 100vh;
   margin: 0 auto;
   padding: 20px;
-  border: 1px solid red;
+  border: 1px solid var(--border-color, #ccc);
   display: flex;
   flex-direction: column;
   justify-content: center;
