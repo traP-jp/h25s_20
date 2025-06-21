@@ -12,13 +12,10 @@
 
 <script setup lang="ts">
 import { defineProps } from "vue";
+import type { Room } from "@/lib/sample-data";
 
-const props = defineProps<{
-  room: {
-    id: number;
-    name: string;
-    status: string;
-  };
+defineProps<{
+  room: Room;
 }>();
 </script>
 
