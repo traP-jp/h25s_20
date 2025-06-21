@@ -17,7 +17,7 @@ type Board struct {
 type Result struct {
 	Id     int
 	Time   string
-	Scores []Playerscore
+	Scores []PlayerScore
 }
 
 type PlayerScore struct {
