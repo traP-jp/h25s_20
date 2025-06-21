@@ -5,7 +5,16 @@
       <UserIcon :id="username" :size="50" />
       <div :class="$style.input">
         <div v-if="false">{{ username }}</div>
-        <input v-else v-model="username" required type="text" placeholder="名前を入力" />
+        <input
+          v-else
+          v-model="username"
+          required
+          type="text"
+          placeholder="名前を入力"
+          @keydown.enter="onEnter"
+          @compositionstart="onCompositionStart"
+          @compositionend="onCompositionEnd"
+        />
       </div>
     </div>
     <button :disabled="!isValid" :class="$style.button" @click="onClick">ゲームをはじめる</button>
@@ -19,15 +28,32 @@ import UserIcon from "@/components/UserIcon.vue";
 
 const username = ref("");
 const router = useRouter();
+const isComposing = ref(false);
 
 const onClick = () => {
   router.push("/");
+};
+
+const onEnter = () => {
+  if (!isComposing.value) {
+    onClick();
+  }
+};
+
+const onCompositionStart = () => {
+  isComposing.value = true;
+};
+
+const onCompositionEnd = () => {
+  isComposing.value = false;
 };
 
 const isValid = computed(() => {
   return username.value.trim().length >= 1 && username.value.trim().length <= 32;
 });
 </script>
+
+// ...existing code...
 
 <style module>
 .container {
