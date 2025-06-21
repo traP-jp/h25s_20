@@ -5,10 +5,12 @@ package models
 
 // Defines values for PostRoomsRoomIdActionsJSONBodyAction.
 const (
-	CANCEL PostRoomsRoomIdActionsJSONBodyAction = "CANCEL"
-	JOIN   PostRoomsRoomIdActionsJSONBodyAction = "JOIN"
-	READY  PostRoomsRoomIdActionsJSONBodyAction = "READY"
-	START  PostRoomsRoomIdActionsJSONBodyAction = "START"
+	ABORT       PostRoomsRoomIdActionsJSONBodyAction = "ABORT"
+	CANCEL      PostRoomsRoomIdActionsJSONBodyAction = "CANCEL"
+	CLOSERESULT PostRoomsRoomIdActionsJSONBodyAction = "CLOSE_RESULT"
+	JOIN        PostRoomsRoomIdActionsJSONBodyAction = "JOIN"
+	READY       PostRoomsRoomIdActionsJSONBodyAction = "READY"
+	START       PostRoomsRoomIdActionsJSONBodyAction = "START"
 )
 
 // Board defines model for Board.
