@@ -1,4 +1,4 @@
-function decodePoland(exp: string): string {
+export function decodePoland(exp: string): string {
     const stack: string[] = [];
 
     for (const c of exp) {

@@ -1,4 +1,4 @@
-function infixToPostfix(input: string): string {
+export function encodePoland(input: string): string {
   // 空白を除去
   const expr = input.replace(/\s+/g, '');
 

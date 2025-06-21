@@ -1,3 +1,5 @@
+// for backend
+
 // see: https://github.com/drken1215/book_puzzle_algorithm/blob/master/solvers/chap1_brute_force/1_1_ten_puzzle_solver.cpp
 // 逆ポーランド記法を受け取る
 // 有効な逆ポーランド記法になっているかチェックする

@@ -1,4 +1,4 @@
-function solveRPNExpression(s: string): string {
+export function solveExpression(s: string): string {
   function calc_poland(exp: string): number {
       const space: number[] = [];
 
