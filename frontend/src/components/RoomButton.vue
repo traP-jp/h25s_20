@@ -27,6 +27,7 @@ const props = defineProps<{
   width: 100%;
   border: 1px solid #ccc;
   text-align: left;
+  cursor: pointer;
 }
 .details {
   padding: 10px;
