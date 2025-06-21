@@ -51,6 +51,17 @@ func (q *Queries) GetUser(ctx context.Context, id int32) (User, error) {
 	return i, err
 }
 
+const GetUserIDByUsername = `-- name: GetUserIDByUsername :one
+SELECT id FROM user WHERE username = ?
+`
+
+func (q *Queries) GetUserIDByUsername(ctx context.Context, username string) (int32, error) {
+	row := q.db.QueryRowContext(ctx, GetUserIDByUsername, username)
+	var id int32
+	err := row.Scan(&id)
+	return id, err
+}
+
 const ListUsers = `-- name: ListUsers :many
 SELECT id, username, password_hash FROM user
 `

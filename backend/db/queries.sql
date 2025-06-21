@@ -15,3 +15,6 @@ UPDATE user SET username = ? WHERE id = ?;
 
 -- name: DeleteUser :exec
 DELETE FROM user WHERE id = ?;
+
+-- name: GetUserIDByUsername :one
+SELECT id FROM user WHERE username = ?;
