@@ -24,7 +24,7 @@ const username = ref('');
 const router = useRouter();
 
 const onClick = () => {
-  router.push("/");
+  router.push("/rooms");
 }
 </script>
 
