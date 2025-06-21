@@ -180,3 +180,35 @@ func (r *RoomUsecase) CloseResult(roomID int, playerID int) (*domain.Room, error
 
 	return room, nil
 }
+
+// CompleteCountdown completes the countdown and transitions to game in progress
+func (r *RoomUsecase) CompleteCountdown(roomID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	err := room.CompleteCountdown()
+	if err != nil {
+		return nil, fmt.Errorf("failed to complete countdown: %w", err)
+	}
+
+	return room, nil
+}
+
+// UpdateGameBoard updates the game board for the specified room
+func (r *RoomUsecase) UpdateGameBoard(roomID int, newBoard domain.GameBoard) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	room.GameBoards = append(room.GameBoards, newBoard)
+	return room, nil
+}

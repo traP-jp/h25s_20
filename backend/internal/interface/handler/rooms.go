@@ -2,6 +2,7 @@ package handler
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/kaitoyama/kaitoyama-server-template/internal/domain"
 	"github.com/kaitoyama/kaitoyama-server-template/openapi/models"
@@ -101,6 +102,9 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"message": "Game has started",
 			})
 		}
+
+		// カウントダウンと最初のボード生成を別のgoroutineで実行
+		go h.handleGameStart(roomId)
 		return c.NoContent(http.StatusNoContent)
 
 	case models.ABORT:
@@ -244,4 +248,60 @@ func (h *Handler) GetRoomsRoomIdResult(c echo.Context, roomId int) error {
 	}
 
 	return c.JSON(http.StatusOK, results)
+}
+
+// handleGameStart はゲーム開始時のカウントダウンと最初のボード生成・送信を処理する
+func (h *Handler) handleGameStart(roomID int) {
+	// カウントダウンを開始する通知を送信
+	if h.notificationService != nil {
+		h.notificationService.NotifyRoom(roomID, "countdown_start", map[string]interface{}{
+			"message":   "Game starting in 3 seconds",
+			"countdown": 3,
+		})
+	}
+
+	// 3秒のカウントダウン
+	for i := 3; i > 0; i-- {
+		time.Sleep(1 * time.Second)
+		if h.notificationService != nil {
+			h.notificationService.NotifyRoom(roomID, "countdown", map[string]interface{}{
+				"count": i,
+			})
+		}
+	}
+
+	// カウントダウン完了後、ゲームを実際に開始
+	_, err := h.roomUsecase.CompleteCountdown(roomID)
+	if err != nil {
+		return
+	}
+
+	// 新しいボードを生成
+	newBoard := domain.NewBoard()
+
+	// ボードをroomに追加
+	_, err = h.roomUsecase.UpdateGameBoard(roomID, newBoard)
+	if err != nil {
+		return
+	}
+
+	// ボードデータを1次元配列に変換
+	content := make([]int, 0, newBoard.Size*newBoard.Size)
+	for i := 0; i < newBoard.Size; i++ {
+		for j := 0; j < newBoard.Size; j++ {
+			content = append(content, newBoard.Board[i][j])
+		}
+	}
+
+	// ゲーム開始とボード情報を送信
+	if h.notificationService != nil {
+		h.notificationService.NotifyRoom(roomID, "game_start", map[string]interface{}{
+			"message": "Game started!",
+			"board": map[string]interface{}{
+				"content": content,
+				"version": newBoard.Version,
+				"size":    newBoard.Size,
+			},
+		})
+	}
 }

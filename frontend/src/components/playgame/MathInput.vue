@@ -8,33 +8,33 @@
     <div :class="$style.container">
       <div :class="$style.tens">
         <div :class="$style.tensRow">
-          <MathInputButton icon="mdi:numeric-1" @click="addToExpression('1')" />
-          <MathInputButton icon="mdi:numeric-2" @click="addToExpression('2')" />
-          <MathInputButton icon="mdi:numeric-3" @click="addToExpression('3')" />
+          <MathInputButton icon="mdi:numeric-1" @click="addSymbol('1')" />
+          <MathInputButton icon="mdi:numeric-2" @click="addSymbol('2')" />
+          <MathInputButton icon="mdi:numeric-3" @click="addSymbol('3')" />
         </div>
         <div :class="$style.tensRow">
-          <MathInputButton icon="mdi:numeric-4" @click="addToExpression('4')" />
-          <MathInputButton icon="mdi:numeric-5" @click="addToExpression('5')" />
-          <MathInputButton icon="mdi:numeric-6" @click="addToExpression('6')" />
+          <MathInputButton icon="mdi:numeric-4" @click="addSymbol('4')" />
+          <MathInputButton icon="mdi:numeric-5" @click="addSymbol('5')" />
+          <MathInputButton icon="mdi:numeric-6" @click="addSymbol('6')" />
         </div>
         <div :class="$style.tensRow">
-          <MathInputButton icon="mdi:numeric-7" @click="addToExpression('7')" />
-          <MathInputButton icon="mdi:numeric-8" @click="addToExpression('8')" />
-          <MathInputButton icon="mdi:numeric-9" @click="addToExpression('9')" />
+          <MathInputButton icon="mdi:numeric-7" @click="addSymbol('7')" />
+          <MathInputButton icon="mdi:numeric-8" @click="addSymbol('8')" />
+          <MathInputButton icon="mdi:numeric-9" @click="addSymbol('9')" />
         </div>
       </div>
       <div :class="$style.tens">
         <div :class="$style.symbolRow">
-          <MathInputButton text="( )" @click="addParentheses" />
+          <MathInputButton icon="mdi:code-parentheses" @click="addParentheses" />
           <MathInputButton icon="mdi:backspace-outline" @click="backspace" />
         </div>
         <div :class="$style.symbolRow">
-          <MathInputButton icon="mdi:plus" @click="addToExpression('+')" />
-          <MathInputButton icon="mdi:minus" @click="addToExpression('-')" />
+          <MathInputButton icon="mdi:plus" @click="addSymbol('+')" />
+          <MathInputButton icon="mdi:minus" @click="addSymbol('-')" />
         </div>
         <div :class="$style.symbolRow">
-          <MathInputButton icon="mdi:close" @click="addToExpression('×')" />
-          <MathInputButton icon="mdi:division" @click="addToExpression('÷')" />
+          <MathInputButton icon="mdi:close" @click="addSymbol('*')" />
+          <MathInputButton icon="mdi:division" @click="addSymbol('/')" />
         </div>
       </div>
     </div>
@@ -59,29 +59,71 @@ const isCorrect = computed(() => {
   }
 });
 
-const addToExpression = (value: string) => {
-  // 数字の場合のみ制限をチェック
-  if (/\d/.test(value)) {
-    // 現在の式から数字のみを抽出してカウント
-    const digitCount = (expression.value.match(/\d/g) || []).length;
+const addSymbol = (value: string) => {
+  const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
 
-    // すでに4つの数字がある場合は追加しない
-    if (digitCount >= 4) {
+  console.log("last is 1-9: ", /[1-9]/.test(last));
+  console.log("last is operator: ", /[+\-*/]/.test(last));
+  console.log("last is open parenthesis: ", last === "(");
+  console.log("last is close parenthesis: ", last === ")");
+
+  console.log("value is 1-9: ", /[1-9]/.test(value));
+  console.log("value is operator: ", /[+\-*/]/.test(value));
+  console.log("value is open parenthesis: ", value === "(");
+  console.log("value is close parenthesis: ", value === ")");
+
+  // last が 1 〜 9 までの数字ならば（0を含まない）
+  if (/[1-9]/.test(last)) {
+    if (/[1-9]/.test(value)) {
+      expression.value = expression.value.slice(0, -1) + value;
+      return;
+    } else if (/[+\-*/]/.test(value)) {
+      expression.value += value;
+      return;
+    }
+  } else if (/[+\-*/]/.test(last)) {
+    if (/[1-9]/.test(value)) {
+      expression.value += value;
+      return;
+    } else if (/[+\-*/]/.test(value)) {
+      expression.value = expression.value.slice(0, -1) + value;
+      return;
+    }
+  } else if (last === "(") {
+    if (/[1-9]/.test(value)) {
+      expression.value += value;
+      return;
+    } else if (/[+\-*/]/.test(value)) {
+      return;
+    }
+  } else if (last === ")") {
+    if (/[1-9]/.test(value)) {
+      return;
+    } else if (/[+\-*/]/.test(value)) {
+      expression.value += value;
       return;
     }
   }
-
-  expression.value += value;
 };
 
 const addParentheses = () => {
   const openParens = (expression.value.match(/\(/g) || []).length;
   const closeParens = (expression.value.match(/\)/g) || []).length;
 
-  if (openParens > closeParens) {
-    expression.value += ")";
-  } else {
-    expression.value += "(";
+  console.log("openParens: ", openParens);
+  console.log("closeParens: ", closeParens);
+
+  const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
+  if (/[1-9]/.test(last) || last === ")") {
+    if (openParens > closeParens) {
+      expression.value += ")";
+    }
+    return;
+  } else if (/[+\-*/]/.test(last) || last === "(") {
+    if (openParens < 2) {
+      expression.value += "(";
+    }
+    return;
   }
 };
 
