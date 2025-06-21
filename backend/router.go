@@ -44,7 +44,7 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	// Initialize services
 	roomUsecase := usecase.NewRoomUsecase()
 	wsManagerInstance := wsManager.NewManager()
-	wsHandler := handler.NewWebSocketHandler(wsManagerInstance)
+	wsHandler := handler.NewWebSocketHandler(wsManagerInstance, roomUsecase)
 
 	// Initialize NotificationService (globally accessible)
 	NotificationService = notification.NewService(roomUsecase, wsManagerInstance)

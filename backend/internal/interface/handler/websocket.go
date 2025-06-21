@@ -8,17 +8,20 @@ import (
 	"github.com/coder/websocket"
 	"github.com/google/uuid"
 	wsManager "github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/websocket"
+	"github.com/kaitoyama/kaitoyama-server-template/internal/usecase"
 	"github.com/labstack/echo/v4"
 	"github.com/rs/zerolog/log"
 )
 
 type WebSocketHandler struct {
-	manager *wsManager.Manager
+	manager     *wsManager.Manager
+	roomUsecase *usecase.RoomUsecase
 }
 
-func NewWebSocketHandler(manager *wsManager.Manager) *WebSocketHandler {
+func NewWebSocketHandler(manager *wsManager.Manager, roomUsecase *usecase.RoomUsecase) *WebSocketHandler {
 	return &WebSocketHandler{
-		manager: manager,
+		manager:     manager,
+		roomUsecase: roomUsecase,
 	}
 }
 
@@ -158,4 +161,18 @@ func (h *WebSocketHandler) GetConnectedClients() int {
 
 func (h *WebSocketHandler) GetRoomConnectedClients(roomID int) int {
 	return h.manager.GetRoomClientCount(roomID)
+}
+
+func (h *WebSocketHandler) HandleFormulaEvent(userID, roomID int, formula string) {
+	board, gainScore, err := h.roomUsecase.ApplyFormula(roomID, userID, formula)
+	if err != nil {
+		h.SendToUser(userID, "formula_error", err.Error())
+		return
+	}
+	// 成功時はルーム全体に通知
+	h.BroadcastToRoom(roomID, "formula_applied", map[string]interface{}{
+		"board":      board,
+		"gain_score": gainScore,
+		"user_id":    userID,
+	})
 }

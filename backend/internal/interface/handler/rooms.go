@@ -183,25 +183,24 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 		})
 	}
 
-	currentBoard := &room.GameBoards[len(room.GameBoards)-1]
-
-	// 数式を検証し、盤面を更新
-	domain.AttemptMove(currentBoard, req.Formula)
+	board, gainScore, err := h.roomUsecase.ApplyFormula(roomId, mockPlayer.ID, req.Formula)
+	if err != nil {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": err.Error(),
+		})
+	}
 
 	// 盤面データを1次元配列に変換
-	content := make([]int, 0, currentBoard.Size*currentBoard.Size)
-	for i := 0; i < currentBoard.Size; i++ {
-		for j := 0; j < currentBoard.Size; j++ {
-			content = append(content, currentBoard.Board[i][j])
+	content := make([]int, 0, board.Size*board.Size)
+	for i := 0; i < board.Size; i++ {
+		for j := 0; j < board.Size; j++ {
+			content = append(content, board.Board[i][j])
 		}
 	}
 
-	// TODO: 実際のスコア計算ロジックを実装
-	gainScore := 10
-
 	response := models.Board{
 		Content:   content,
-		Version:   currentBoard.Version,
+		Version:   board.Version,
 		GainScore: gainScore,
 	}
 
