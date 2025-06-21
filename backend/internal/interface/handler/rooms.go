@@ -39,6 +39,16 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"error": "Failed to join room: " + err.Error(),
 			})
 		}
+
+		// WebSocketでルームに参加
+		if h.WebSocketHandler != nil {
+			err = h.WebSocketHandler.JoinRoom(mockPlayer.ID, roomId)
+			if err != nil {
+				// WebSocketのjoinに失敗してもHTTPレスポンスはエラーにしない（ログ出力のみ）
+				// WebSocket接続がない場合もあるため
+			}
+		}
+
 		// WebSocketでルーム全員に通知
 		if h.WebSocketHandler != nil {
 			h.WebSocketHandler.BroadcastToRoom(roomId, "player_joined", map[string]interface{}{
@@ -71,6 +81,12 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"error": "Failed to cancel ready status: " + err.Error(),
 			})
 		}
+
+		h.WebSocketHandler.BroadcastToRoom(roomId, "player_canceled", map[string]interface{}{
+			"user_id":   mockPlayer.ID,
+			"user_name": mockPlayer.UserName,
+			"room_id":   roomId,
+		})
 		return c.NoContent(http.StatusNoContent)
 
 	case models.START:
@@ -108,12 +124,23 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		return c.NoContent(http.StatusNoContent)
 
 	case models.ABORT:
-		_, err := h.roomUsecase.AbortGame(roomId)
-		if err != nil {
-			return c.JSON(http.StatusInternalServerError, map[string]string{
-				"error": "Failed to abort game: " + err.Error(),
+		// WebSocketからルームを退出
+		if h.WebSocketHandler != nil {
+			err := h.WebSocketHandler.LeaveRoom(mockPlayer.ID)
+			if err != nil {
+				// WebSocketのleaveに失敗してもHTTPレスポンスはエラーにしない（ログ出力のみ）
+			}
+		}
+
+		// ABORTの場合はroomstateを変更せず、WebSocketでの通知のみ行う
+		if h.WebSocketHandler != nil {
+			h.WebSocketHandler.BroadcastToRoom(roomId, "player_left", map[string]interface{}{
+				"user_id":   mockPlayer.ID,
+				"user_name": mockPlayer.UserName,
+				"room_id":   roomId,
 			})
 		}
+
 		return c.NoContent(http.StatusNoContent)
 
 	case models.CLOSERESULT:
@@ -123,6 +150,13 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 				"error": "Failed to close result: " + err.Error(),
 			})
 		}
+
+		// WebSocketでルーム全員に通知
+		h.WebSocketHandler.BroadcastToRoom(roomId, "result_closed", map[string]interface{}{
+			"user_id":   mockPlayer.ID,
+			"user_name": mockPlayer.UserName,
+			"room_id":   roomId,
+		})
 		return c.NoContent(http.StatusNoContent)
 
 	default:
@@ -252,8 +286,8 @@ func (h *Handler) GetRoomsRoomIdResult(c echo.Context, roomId int) error {
 // handleGameStart はゲーム開始時のカウントダウンと最初のボード生成・送信を処理する
 func (h *Handler) handleGameStart(roomID int) {
 	// カウントダウンを開始する通知を送信
-	if h.notificationService != nil {
-		h.notificationService.NotifyRoom(roomID, "countdown_start", map[string]interface{}{
+	if h.wsManager != nil {
+		h.wsManager.NotifyRoom(roomID, "countdown_start", map[string]interface{}{
 			"message":   "Game starting in 3 seconds",
 			"countdown": 3,
 		})
@@ -262,8 +296,8 @@ func (h *Handler) handleGameStart(roomID int) {
 	// 3秒のカウントダウン
 	for i := 3; i > 0; i-- {
 		time.Sleep(1 * time.Second)
-		if h.notificationService != nil {
-			h.notificationService.NotifyRoom(roomID, "countdown", map[string]interface{}{
+		if h.wsManager != nil {
+			h.wsManager.NotifyRoom(roomID, "countdown", map[string]interface{}{
 				"count": i,
 			})
 		}
@@ -293,8 +327,8 @@ func (h *Handler) handleGameStart(roomID int) {
 	}
 
 	// ゲーム開始とボード情報を送信
-	if h.notificationService != nil {
-		h.notificationService.NotifyRoom(roomID, "game_start", map[string]interface{}{
+	if h.wsManager != nil {
+		h.wsManager.NotifyRoom(roomID, "game_start", map[string]interface{}{
 			"message": "Game started!",
 			"board": map[string]interface{}{
 				"content": content,

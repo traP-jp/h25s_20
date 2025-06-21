@@ -66,7 +66,7 @@ func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
 		},
 	}
 
-	if err := h.manager.SendToUser(userID, welcomeMessage); err != nil {
+	if err := h.manager.NotifyUser(userID, welcomeMessage.Event, welcomeMessage.Content); err != nil {
 		log.Error().Err(err).Int("user_id", userID).Msg("Failed to send welcome message")
 	}
 
@@ -111,38 +111,22 @@ func (h *WebSocketHandler) handleConnection(ctx context.Context, conn *websocket
 
 // 全クライアントにメッセージを送信
 func (h *WebSocketHandler) BroadcastToAll(event string, content interface{}) {
-	message := wsManager.NotificationMessage{
-		Event:   event,
-		Content: content,
-	}
-	h.manager.BroadcastToAll(message)
+	h.manager.NotifyAll(event, content)
 }
 
 // room参加者全員にメッセージを送信
 func (h *WebSocketHandler) BroadcastToRoom(roomID int, event string, content interface{}) {
-	message := wsManager.NotificationMessage{
-		Event:   event,
-		Content: content,
-	}
-	h.manager.BroadcastToRoom(roomID, message)
+	h.manager.NotifyRoom(roomID, event, content)
 }
 
 // room未参加者全員にメッセージを送信
 func (h *WebSocketHandler) BroadcastToNonRoomMembers(event string, content interface{}) {
-	message := wsManager.NotificationMessage{
-		Event:   event,
-		Content: content,
-	}
-	h.manager.BroadcastToNonRoomMembers(message)
+	h.manager.NotifyNonRoomMembers(event, content)
 }
 
 // 特定のユーザーにメッセージを送信
 func (h *WebSocketHandler) SendToUser(userID int, event string, content interface{}) error {
-	message := wsManager.NotificationMessage{
-		Event:   event,
-		Content: content,
-	}
-	return h.manager.SendToUser(userID, message)
+	return h.manager.NotifyUser(userID, event, content)
 }
 
 // ユーザーをroomに参加させる

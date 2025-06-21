@@ -6,7 +6,6 @@ import (
 
 	"github.com/getkin/kin-openapi/openapi3"
 	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/db"
-	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/notification"
 	wsManager "github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/websocket"
 	"github.com/kaitoyama/kaitoyama-server-template/internal/interface/handler"
 	"github.com/kaitoyama/kaitoyama-server-template/internal/usecase"
@@ -18,9 +17,6 @@ import (
 
 //go:embed openapi/swagger.yml
 var swaggerFile []byte
-
-// グローバルなNotificationServiceインスタンス
-var NotificationService *notification.Service
 
 func SetupRouter(database *sql.DB) *echo.Echo {
 	// Initialize Echo
@@ -46,9 +42,6 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	wsManagerInstance := wsManager.NewManager()
 	wsHandler := handler.NewWebSocketHandler(wsManagerInstance, roomUsecase)
 
-	// Initialize NotificationService (globally accessible)
-	NotificationService = notification.NewService(roomUsecase, wsManagerInstance)
-
 	// WebSocket endpoint (outside of API group to avoid OpenAPI validation)
 	e.GET("/ws", wsHandler.HandleWebSocket)
 
@@ -56,7 +49,7 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	api := e.Group("/api")
 
 	dbChecker := db.NewDBHealthChecker(database)
-	healthHandler := handler.NewHandler(dbChecker, NotificationService)
+	healthHandler := handler.NewHandler(dbChecker, wsManagerInstance)
 
 	// Register API handlers with /api prefix
 	openapi.RegisterHandlersWithBaseURL(api, healthHandler, "")

@@ -352,14 +352,6 @@ func (r *Room) StartGame() error {
 	return r.TransitionTo(StateCountdown)
 }
 
-// AbortGame aborts the game and returns to waiting state
-func (r *Room) AbortGame() error {
-	if r.State == StateWaitingForPlayers {
-		return fmt.Errorf("game is not in progress")
-	}
-	return r.TransitionTo(StateWaitingForPlayers)
-}
-
 // CompleteCountdown transitions from countdown to game in progress
 func (r *Room) CompleteCountdown() error {
 	if r.State != StateCountdown {

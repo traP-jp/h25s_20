@@ -146,24 +146,6 @@ func (r *RoomUsecase) StartGame(roomID int) (*domain.Room, error) {
 	return room, nil
 }
 
-// AbortGame aborts the game for the specified room
-func (r *RoomUsecase) AbortGame(roomID int) (*domain.Room, error) {
-	r.mutex.Lock()
-	defer r.mutex.Unlock()
-
-	room, exists := r.rooms[roomID]
-	if !exists {
-		return nil, fmt.Errorf("room with ID %d not found", roomID)
-	}
-
-	err := room.AbortGame()
-	if err != nil {
-		return nil, fmt.Errorf("failed to abort game: %w", err)
-	}
-
-	return room, nil
-}
-
 // CloseResult closes the result display for a player in the specified room
 func (r *RoomUsecase) CloseResult(roomID int, playerID int) (*domain.Room, error) {
 	r.mutex.Lock()
