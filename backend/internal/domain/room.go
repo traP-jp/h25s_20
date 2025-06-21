@@ -10,6 +10,35 @@ import (
 	"github.com/Knetic/govaluate"
 )
 
+// RoomState represents the game state of a room
+type RoomState int
+
+const (
+	StateWaitingForPlayers RoomState = iota // 募集中 (全員のready待ち)
+	StateAllReady                           // 全員READY済 (ユーザーの列の先頭のユーザーがstartを押した)
+	StateCountdown                          // START(カウントダウン中)
+	StateGameInProgress                     // 実際にゲーム開始(盤面情報配信)
+	StateGameEnded                          // ゲーム終了(全員結果表示を閉じるのまち)
+)
+
+// String returns the string representation of RoomState
+func (rs RoomState) String() string {
+	switch rs {
+	case StateWaitingForPlayers:
+		return "WaitingForPlayers"
+	case StateAllReady:
+		return "AllReady"
+	case StateCountdown:
+		return "Countdown"
+	case StateGameInProgress:
+		return "GameInProgress"
+	case StateGameEnded:
+		return "GameEnded"
+	default:
+		return "Unknown"
+	}
+}
+
 type Room struct {
 	ID         int
 	Name       string
@@ -17,6 +46,7 @@ type Room struct {
 	IsOpened   bool
 	Players    []Player
 	ResultLog  []Result
+	State      RoomState // ステートマシンの現在の状態
 }
 
 type GameBoard struct {
@@ -229,4 +259,158 @@ func EvaluateExpression(expression string) (float64, error) {
 		return val, nil
 	}
 	return 0, fmt.Errorf("計算結果を数値に変換できませんでした")
+}
+
+// ステートマシンの制御メソッド
+
+// NewRoom creates a new room with initial state
+func NewRoom(id int, name string) *Room {
+	return &Room{
+		ID:         id,
+		Name:       name,
+		GameBoards: []GameBoard{NewBoard()},
+		IsOpened:   true,
+		Players:    []Player{},
+		ResultLog:  []Result{},
+		State:      StateWaitingForPlayers,
+	}
+}
+
+// CanTransitionTo checks if the room can transition to the given state
+func (r *Room) CanTransitionTo(newState RoomState) bool {
+	switch r.State {
+	case StateWaitingForPlayers:
+		return newState == StateAllReady || newState == StateWaitingForPlayers
+	case StateAllReady:
+		return newState == StateCountdown || newState == StateWaitingForPlayers
+	case StateCountdown:
+		return newState == StateGameInProgress || newState == StateWaitingForPlayers
+	case StateGameInProgress:
+		return newState == StateGameEnded || newState == StateWaitingForPlayers
+	case StateGameEnded:
+		return newState == StateWaitingForPlayers
+	default:
+		return false
+	}
+}
+
+// TransitionTo transitions the room to the given state if valid
+func (r *Room) TransitionTo(newState RoomState) error {
+	if !r.CanTransitionTo(newState) {
+		return fmt.Errorf("cannot transition from %s to %s", r.State.String(), newState.String())
+	}
+	r.State = newState
+	return nil
+}
+
+// AreAllPlayersReady checks if all players in the room are ready
+func (r *Room) AreAllPlayersReady() bool {
+	if len(r.Players) == 0 {
+		return false
+	}
+	for _, player := range r.Players {
+		if !player.IsReady {
+			return false
+		}
+	}
+	return true
+}
+
+// AreAllPlayersClosedResult checks if all players have closed the result display
+func (r *Room) AreAllPlayersClosedResult() bool {
+	if len(r.Players) == 0 {
+		return false
+	}
+	for _, player := range r.Players {
+		if !player.HasClosedResult {
+			return false
+		}
+	}
+	return true
+}
+
+// GetFirstPlayer returns the first player in the room (for start game permission)
+func (r *Room) GetFirstPlayer() *Player {
+	if len(r.Players) == 0 {
+		return nil
+	}
+	return &r.Players[0]
+}
+
+// CanStartGame checks if the game can be started
+func (r *Room) CanStartGame() bool {
+	return r.State == StateAllReady && len(r.Players) > 0
+}
+
+// StartGame starts the game by transitioning to countdown state
+func (r *Room) StartGame() error {
+	if !r.CanStartGame() {
+		return fmt.Errorf("cannot start game in current state: %s", r.State.String())
+	}
+	return r.TransitionTo(StateCountdown)
+}
+
+// AbortGame aborts the game and returns to waiting state
+func (r *Room) AbortGame() error {
+	if r.State == StateWaitingForPlayers {
+		return fmt.Errorf("game is not in progress")
+	}
+	return r.TransitionTo(StateWaitingForPlayers)
+}
+
+// CompleteCountdown transitions from countdown to game in progress
+func (r *Room) CompleteCountdown() error {
+	if r.State != StateCountdown {
+		return fmt.Errorf("room is not in countdown state")
+	}
+	return r.TransitionTo(StateGameInProgress)
+}
+
+// EndGame ends the current game
+func (r *Room) EndGame() error {
+	if r.State != StateGameInProgress {
+		return fmt.Errorf("game is not in progress")
+	}
+	return r.TransitionTo(StateGameEnded)
+}
+
+// ResetRoom resets the room to waiting state
+func (r *Room) ResetRoom() error {
+	if r.State != StateGameEnded {
+		return fmt.Errorf("game has not ended yet")
+	}
+	// Reset player ready status and result closed status
+	for i := range r.Players {
+		r.Players[i].IsReady = false
+		r.Players[i].HasClosedResult = false
+	}
+	return r.TransitionTo(StateWaitingForPlayers)
+}
+
+// CloseResult closes the result display for a specific player
+func (r *Room) CloseResult(playerID int) error {
+	if r.State != StateGameEnded {
+		return fmt.Errorf("game has not ended yet")
+	}
+
+	// Find and update the player
+	playerFound := false
+	for i, player := range r.Players {
+		if player.ID == playerID {
+			r.Players[i].HasClosedResult = true
+			playerFound = true
+			break
+		}
+	}
+
+	if !playerFound {
+		return fmt.Errorf("player with ID %d not found in room", playerID)
+	}
+
+	// If all players have closed the result, automatically reset the room
+	if r.AreAllPlayersClosedResult() {
+		return r.ResetRoom()
+	}
+
+	return nil
 }

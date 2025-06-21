@@ -36,6 +36,8 @@
 import { ref } from "vue";
 import { roomData } from "@/lib/sample-data";
 
+import type { Room } from "@/lib/types.ts";
+
 import OpponentInfo from "@/components/playgame/OpponentInfo.vue";
 import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
 import MathInput from "@/components/playgame/MathInput.vue";
