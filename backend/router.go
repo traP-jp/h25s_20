@@ -3,13 +3,16 @@ package main
 import (
 	"database/sql"
 	_ "embed"
+	"strconv"
 
 	"github.com/getkin/kin-openapi/openapi3"
-	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/db"
+	"github.com/kaitoyama/kaitoyama-server-template/internal/db"
+	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/auth"
+	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/config"
+	dbInfra "github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/db"
 	wsManager "github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/websocket"
 	"github.com/kaitoyama/kaitoyama-server-template/internal/interface/handler"
 	"github.com/kaitoyama/kaitoyama-server-template/internal/usecase"
-	"github.com/kaitoyama/kaitoyama-server-template/openapi"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
 	"github.com/rs/zerolog/log"
@@ -19,6 +22,9 @@ import (
 var swaggerFile []byte
 
 func SetupRouter(database *sql.DB) *echo.Echo {
+	// Load configuration for JWT secret
+	cfg := config.LoadConfig()
+
 	// Initialize Echo
 	e := echo.New()
 
@@ -37,7 +43,13 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 		log.Fatal().Err(err).Msg("Swagger spec validation error")
 	}
 
+	// Initialize database queries
+	queries := db.New(database)
+
 	// Initialize services
+	jwtService := auth.NewJWTService(cfg.JWTSecret)
+	userUsecase := usecase.NewUserUsecase(queries)
+	authService := auth.NewAuthService(jwtService, userUsecase)
 	roomUsecase := usecase.NewRoomUsecase()
 	wsManagerInstance := wsManager.NewManager()
 	wsHandler := handler.NewWebSocketHandler(wsManagerInstance, roomUsecase)
@@ -48,11 +60,30 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	// Setup API routes
 	api := e.Group("/api")
 
-	dbChecker := db.NewDBHealthChecker(database)
-	healthHandler := handler.NewHandler(dbChecker, wsManagerInstance, roomUsecase)
+	dbChecker := dbInfra.NewDBHealthChecker(database)
+	apiHandler := handler.NewHandler(dbChecker, wsManagerInstance, roomUsecase, userUsecase, jwtService)
 
-	// Register API handlers with /api prefix
-	openapi.RegisterHandlersWithBaseURL(api, healthHandler, "")
+	// 認証不要エンドポイント
+	api.GET("/health", apiHandler.GetHealth)
+	api.POST("/users", apiHandler.PostUsers)
+
+	// 認証が必要なエンドポイント
+	protectedApi := api.Group("")
+	protectedApi.Use(authService.AuthMiddleware())
+
+	protectedApi.GET("/rooms", apiHandler.GetRooms)
+	protectedApi.POST("/rooms/:roomId/actions", func(c echo.Context) error {
+		roomId, _ := strconv.Atoi(c.Param("roomId"))
+		return apiHandler.PostRoomsRoomIdActions(c, roomId)
+	})
+	protectedApi.POST("/rooms/:roomId/formulas", func(c echo.Context) error {
+		roomId, _ := strconv.Atoi(c.Param("roomId"))
+		return apiHandler.PostRoomsRoomIdFormulas(c, roomId)
+	})
+	protectedApi.GET("/rooms/:roomId/result", func(c echo.Context) error {
+		roomId, _ := strconv.Atoi(c.Param("roomId"))
+		return apiHandler.GetRoomsRoomIdResult(c, roomId)
+	})
 
 	return e
 }

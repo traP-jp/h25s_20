@@ -16,6 +16,7 @@ type Querier interface {
 	DeleteUser(ctx context.Context, id int32) error
 	GetTop10Scores(ctx context.Context) ([]GetTop10ScoresRow, error)
 	GetUser(ctx context.Context, id int32) (User, error)
+	GetUserByUsername(ctx context.Context, username string) (User, error)
 	GetUserIDByUsername(ctx context.Context, username string) (int32, error)
 	ListUsers(ctx context.Context) ([]User, error)
 	UpdateUser(ctx context.Context, arg UpdateUserParams) error
