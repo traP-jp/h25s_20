@@ -62,7 +62,11 @@
           </select>
           <button @click="testRoomAction" :disabled="loading">POST /rooms/:id/actions</button>
         </div>
-        <div v-if="responses.roomActions" class="response" :class="responses.roomActions.success ? 'success' : 'error'">
+        <div
+          v-if="responses.roomActions"
+          class="response"
+          :class="responses.roomActions.success ? 'success' : 'error'"
+        >
           <pre>{{ responses.roomActions.data }}</pre>
         </div>
       </div>
@@ -100,141 +104,114 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from 'vue'
-import axios, { type AxiosResponse, type AxiosError } from 'axios'
+import { ref, reactive } from "vue";
+import { apiClient, type ApiResponse } from "@/api";
 
-const loading = ref(false)
-const baseUrl = ref('https://10ten.trap.show/api')
-const authToken = ref('')
+const loading = ref(false);
+const baseUrl = ref("https://10ten.trap.show/api");
+const authToken = ref("");
+
+// Initialize API client with reactive values
+const updateApiClient = () => {
+  apiClient.setBaseUrl(baseUrl.value);
+  apiClient.setAuthToken(authToken.value);
+};
 
 const userData = reactive({
-  username: '',
-  password: ''
-})
+  username: "",
+  password: "",
+});
 
 const roomAction = reactive({
   roomId: null as number | null,
-  action: ''
-})
+  action: "" as "" | "JOIN" | "READY" | "CANCEL" | "START" | "ABORT" | "CLOSE_RESULT",
+});
 
 const formula = reactive({
   roomId: null as number | null,
   version: 1,
-  formula: ''
-})
+  formula: "",
+});
 
-const resultRoomId = ref<number | null>(null)
+const resultRoomId = ref<number | null>(null);
 
 const responses = reactive({
-  health: null as any,
-  users: null as any,
-  rooms: null as any,
-  roomActions: null as any,
-  formulas: null as any,
-  results: null as any
-})
-
-const makeRequest = async (
-  method: 'GET' | 'POST',
-  endpoint: string,
-  data?: any,
-  needsAuth: boolean = false
-) => {
-  loading.value = true
-  try {
-    const config: any = {
-      method,
-      url: `${baseUrl.value}${endpoint}`,
-      headers: {}
-    }
-
-    if (needsAuth && authToken.value) {
-      config.headers.Authorization = `Bearer ${authToken.value}`
-    }
-
-    if (data) {
-      config.data = data
-      config.headers['Content-Type'] = 'application/json'
-    }
-
-    const response: AxiosResponse = await axios(config)
-    return {
-      success: true,
-      status: response.status,
-      data: response.data
-    }
-  } catch (error) {
-    const axiosError = error as AxiosError
-    return {
-      success: false,
-      status: axiosError.response?.status || 0,
-      data: axiosError.response?.data || axiosError.message
-    }
-  } finally {
-    loading.value = false
-  }
-}
+  health: null as ApiResponse | null,
+  users: null as ApiResponse | null,
+  rooms: null as ApiResponse | null,
+  roomActions: null as ApiResponse | null,
+  formulas: null as ApiResponse | null,
+  results: null as ApiResponse | null,
+});
 
 const testHealth = async () => {
-  responses.health = await makeRequest('GET', '/health')
-}
+  loading.value = true;
+  updateApiClient();
+  responses.health = await apiClient.checkHealth();
+  loading.value = false;
+};
 
 const testCreateUser = async () => {
   if (!userData.username || !userData.password) {
-    alert('Please enter username and password')
-    return
+    alert("Please enter username and password");
+    return;
   }
-  responses.users = await makeRequest('POST', '/users', {
+  loading.value = true;
+  updateApiClient();
+  responses.users = await apiClient.createUser({
     username: userData.username,
-    password: userData.password
-  })
-  
+    password: userData.password,
+  });
+
   // If successful, update the auth token
   if (responses.users.success && responses.users.data?.token) {
-    authToken.value = responses.users.data.token
+    authToken.value = responses.users.data.token;
   }
-}
+  loading.value = false;
+};
 
 const testGetRooms = async () => {
-  responses.rooms = await makeRequest('GET', '/rooms', undefined, true)
-}
+  loading.value = true;
+  updateApiClient();
+  responses.rooms = await apiClient.getRooms();
+  loading.value = false;
+};
 
 const testRoomAction = async () => {
   if (!roomAction.roomId || !roomAction.action) {
-    alert('Please enter room ID and select an action')
-    return
+    alert("Please enter room ID and select an action");
+    return;
   }
-  responses.roomActions = await makeRequest(
-    'POST',
-    `/rooms/${roomAction.roomId}/actions`,
-    { action: roomAction.action },
-    true
-  )
-}
+  loading.value = true;
+  updateApiClient();
+  responses.roomActions = await apiClient.performRoomAction(roomAction.roomId, { action: roomAction.action });
+  loading.value = false;
+};
 
 const testSubmitFormula = async () => {
   if (!formula.roomId || !formula.formula) {
-    alert('Please enter room ID and formula')
-    return
+    alert("Please enter room ID and formula");
+    return;
   }
-  responses.formulas = await makeRequest(
-    'POST',
-    `/rooms/${formula.roomId}/formulas`,
-    {
-      version: formula.version,
-      formula: formula.formula
-    },
-    true
-  )
-}
+  loading.value = true;
+  updateApiClient();
+  responses.formulas = await apiClient.submitFormula(formula.roomId, {
+    version: formula.version,
+    formula: formula.formula,
+  });
+  loading.value = false;
+};
 
 const testGetResults = async () => {
   if (!resultRoomId.value) {
-    alert('Please enter room ID')
-    return
+    alert("Please enter room ID");
+    return;
   }
-  responses.results = await makeRequest('GET', `/rooms/${resultRoomId.value}/result`, undefined, true)
-}
+  loading.value = true;
+  updateApiClient();
+  responses.results = await apiClient.getRoomResults(resultRoomId.value);
+  loading.value = false;
+};
 </script>
 
 <style scoped>
@@ -242,7 +219,7 @@ const testGetResults = async () => {
   max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
 
 .header {
@@ -343,7 +320,7 @@ const testGetResults = async () => {
   margin-top: 15px;
   padding: 15px;
   border-radius: 4px;
-  font-family: 'Monaco', 'Courier New', monospace;
+  font-family: "Monaco", "Courier New", monospace;
   font-size: 12px;
   white-space: pre-wrap;
   word-break: break-all;
@@ -380,15 +357,15 @@ const testGetResults = async () => {
   .api-sections {
     grid-template-columns: 1fr;
   }
-  
+
   .server-config {
     flex-direction: column;
     align-items: center;
   }
-  
+
   .server-config input {
     width: 100%;
     max-width: 300px;
   }
 }
-</style> 
+</style>
