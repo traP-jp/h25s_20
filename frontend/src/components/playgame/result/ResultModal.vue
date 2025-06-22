@@ -13,9 +13,9 @@
 import OverlayModal from "@/components/OverlayModal.vue";
 import ResultUserList from "@/components/playgame/result/ResultUserList.vue";
 import ResultControl from "@/components/playgame/result/ResultControl.vue";
-import { ref, inject } from "vue";
+import { inject } from "vue";
 
-const showStartModal = inject("showStartModal");
+// const showStartModal = inject("showStartModal");
 const showResultModal = inject("showResultModal");
 </script>
 

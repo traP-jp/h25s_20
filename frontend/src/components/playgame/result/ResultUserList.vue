@@ -12,7 +12,7 @@
 </template>
 <script setup lang="ts">
 import ResultUser from "@/components/playgame/result/ResultUser.vue";
-import { ref } from "vue";
+// import { ref } from "vue";
 
 const players = [
   { id: 0, name: "kitsne", rank: 1, score: 100 },

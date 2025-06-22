@@ -18,7 +18,7 @@ import TextMark from "@/components/TextMark.vue";
 
 // propsからroomを受け取る
 defineProps<{
-  room?: Room;
+  room: Room | null;
 }>();
 </script>
 

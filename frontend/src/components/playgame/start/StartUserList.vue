@@ -14,7 +14,6 @@
 </template>
 <script setup lang="ts">
 import StartUser from "@/components/playgame/start/StartUser.vue";
-import { ref } from "vue";
 
 const players = [
   { id: 0, name: "kitsne", gold: 3, silver: 2, bronze: 1, isReady: true },

@@ -15,7 +15,6 @@ import StartControl from "@/components/playgame/start/StartControl.vue";
 import { inject } from "vue";
 
 const showStartModal = inject("showStartModal");
-const showResultModal = inject("showResultModal");
 </script>
 
 <style module>

@@ -23,7 +23,7 @@
     <StartModal />
     <ResultModal />
 
-    <TopBar v-model:room="roomData[0]" />
+    <TopBar :room="currentRoom" />
     <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
     <button @click="debugStartCountdown(3)">Debug Countdown</button>
     <CountDown v-if="countdown >= 0" :time="countdown" />
@@ -32,7 +32,6 @@
 
 <script setup lang="ts">
 import { ref, watch, provide, computed } from "vue";
-import { roomData } from "@/lib/sample-data";
 import {
   type WebSocketEvent,
   type BoardUpdateEventContent,
@@ -283,12 +282,6 @@ function debugStartGame() {
   gameTime.value = 60;
   startGameTimer();
   console.log("Debug: Game started");
-}
-
-function debugUpdateBoard() {
-  // 盤面をランダムに更新
-  board.value = generateInitialBoard();
-  console.log("Debug: Board updated");
 }
 
 // デバッグ用カウントダウン

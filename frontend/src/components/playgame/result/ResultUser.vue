@@ -7,7 +7,7 @@
   </div>
 </template>
 <script setup lang="ts">
-import { ref } from "vue";
+// import { ref } from "vue";
 import ResultBadge from "@/components/playgame/result/ResultBadge.vue";
 import UserIcon from "@/components/UserIcon.vue";
 

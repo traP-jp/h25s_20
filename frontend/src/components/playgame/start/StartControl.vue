@@ -1,34 +1,18 @@
 <template>
   <div :class="$style.container">
-    <button
-      :class="$style.mainBtn"
-      @click="onClickMain"
-      :disabled="isBtnDisabled"
-    >
+    <button :class="$style.mainBtn" @click="onClickMain" :disabled="isBtnDisabled">
       {{ BtnMsg }}
     </button>
-    <button
-      v-show="!isBtnDisabled"
-      :class="$style.quitBtn"
-      @click="onClickQuit"
-    >
-      部屋から抜ける
-    </button>
-    <button
-      v-show="isBtnDisabled"
-      :class="$style.cancelBtn"
-      @click="onClickCancel"
-    >
-      キャンセル
-    </button>
+    <button v-show="!isBtnDisabled" :class="$style.quitBtn" @click="onClickQuit">部屋から抜ける</button>
+    <button v-show="isBtnDisabled" :class="$style.cancelBtn" @click="onClickCancel">キャンセル</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, inject } from "vue";
+import { ref } from "vue";
 
-const showStartModal = inject("showStartModal");
-const showResultModal = inject("showResultModal");
+// const showStartModal = inject<boolean>("showStartModal");
+// const showResultModal = inject<boolean>("showResultModal");
 
 const BtnMsg = ref("準備OK!");
 const isBtnDisabled = ref(false);
@@ -43,7 +27,9 @@ const onClickMain = () => {
 const onClickQuit = () => {
   // send an event to backend
   // close modal
-  showStartModal.value = false;
+  // if (showResultModal) {
+  //   showResultModal = false;
+  // }
 };
 
 const onClickCancel = () => {
