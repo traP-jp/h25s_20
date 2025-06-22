@@ -298,8 +298,15 @@ func (r *RoomUsecase) ApplyFormulaWithVersion(roomID int, playerID int, formula 
 		return nil, 0, fmt.Errorf("%s", errMessage)
 	}
 
-	// スコア計算: 消した組数 * 10点
-	gainScore := matchCount * 10
+	// 連続正解数をカウント
+	if room.LastCorrectPlayerID == playerID {
+		room.StreakCount++
+	} else {
+		room.StreakCount = 1
+		room.LastCorrectPlayerID = playerID
+	}
+	// スコア計算: 消した組数 * (5+5*"連続正解数")点
+	gainScore := matchCount * (5 + 5*room.StreakCount)
 
 	// プレイヤーのスコアに加算
 	for i := range room.Players {

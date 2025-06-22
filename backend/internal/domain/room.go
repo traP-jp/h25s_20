@@ -36,13 +36,15 @@ func (rs RoomState) String() string {
 }
 
 type Room struct {
-	ID         int
-	Name       string
-	GameBoards []GameBoard
-	IsOpened   bool
-	Players    []Player
-	ResultLog  []Result
-	State      RoomState // ステートマシンの現在の状態
+	ID                  int
+	Name                string
+	GameBoards          []GameBoard
+	IsOpened            bool
+	Players             []Player
+	ResultLog           []Result
+	State               RoomState // ステートマシンの現在の状態
+	LastCorrectPlayerID int       //直前の正解者のID
+	StreakCount         int       //連続正解の回数
 }
 
 type GameBoard struct {
