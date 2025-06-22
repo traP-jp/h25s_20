@@ -18,6 +18,7 @@
 
     <div :class="$style.inputbox">
       <MathInput
+        v-model:version="version"
         v-model:board="board"
         v-model:current-expression="currentExpression"
         v-model:currentRoom="currentRoom"
@@ -39,6 +40,7 @@ import { ref, watch, computed } from "vue";
 import { useWebSocketStore, useGameResultStore, useRoomPlayersStore, useCurrentRoomStore } from "@/store";
 import TopBar from "@/components/playgame/TopBar.vue";
 import type { Room } from "@/lib/types";
+import { WS_EVENTS, type WebSocketEvent } from "@/lib/websocket";
 
 import OpponentInfo from "@/components/playgame/OpponentInfo.vue";
 import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
@@ -72,6 +74,8 @@ function getCurrentUserId(): number {
   // 実際の実装では認証情報から取得
   return 1;
 }
+
+const version = ref(0); // フォーミュラのバージョン管理
 
 // ゲームタイマー管理
 let gameTimer: number | null = null;
@@ -159,6 +163,71 @@ onMounted(() => {
       is_ready: user.isReady,
     }));
     roomPlayersStore.updatePlayers(roomPlayers);
+  }
+
+  // WebSocketイベントハンドラーの設定
+  const handleWebSocketEvent = (event: WebSocketEvent) => {
+    console.log("PlayView received WebSocket event:", event);
+
+    switch (event.event) {
+      case WS_EVENTS.COUNTDOWN_START:
+        console.log("Countdown start event received");
+        break;
+
+      case WS_EVENTS.COUNTDOWN:
+        console.log("Countdown event received:", event.content);
+        if (event.content && typeof event.content === "object" && "count" in event.content) {
+          countdown.value = (event.content as any).count;
+        }
+        break;
+
+      case WS_EVENTS.GAME_START:
+        console.log("Game start event received");
+        countdown.value = -1; // カウントダウンを非表示
+        showStartModal.value = false; // スタートモーダルを閉じる
+        gameStarted.value = true;
+        gameTime.value = 120; // 120秒ゲーム
+        startGameTimer();
+
+        // ボード情報があれば更新
+        if (event.content && typeof event.content === "object" && "board" in event.content) {
+          const boardContent = event.content as any;
+          if (boardContent.board && boardContent.board.content) {
+            board.value = boardContent.board.content;
+          }
+        }
+        break;
+
+      case WS_EVENTS.BOARD_UPDATED:
+        console.log("Board updated event received:", event.content);
+        if (event.content && typeof event.content === "object" && "board" in event.content) {
+          const boardContent = event.content as any;
+          if (boardContent.board && boardContent.board.content) {
+            console.log("Updating board from WebSocket:", boardContent.board.content);
+            board.value = boardContent.board.content;
+          }
+          // スコアも更新
+          if (boardContent.gain_score) {
+            gameScore.value += boardContent.gain_score;
+            console.log("Score updated:", gameScore.value);
+          }
+          version.value++;
+        }
+        break;
+
+      case WS_EVENTS.GAME_ENDED:
+        console.log("Game ended event received");
+        gameStarted.value = false;
+        stopGameTimer();
+        showResultModal.value = true;
+        break;
+    }
+  };
+
+  // グローバルWebSocketストアにイベントハンドラーを追加
+  if (webSocketStore.wsManager) {
+    webSocketStore.wsManager.addMessageHandler(handleWebSocketEvent);
+    console.log("Added PlayView WebSocket event handler");
   }
 
   // グローバルWebSocketストアに現在のコンポーネントのイベントハンドラーを設定

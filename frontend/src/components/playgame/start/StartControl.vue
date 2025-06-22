@@ -162,6 +162,7 @@ const onClickStart = async () => {
     if (response.success) {
       console.log("Successfully started the game");
       // ゲーム開始後の処理は WebSocket イベントで処理される想定
+      // モーダルの制御はWebSocketイベントで行われるため、ここでは何もしない
     } else {
       console.error("Failed to start game:", response.data);
       alert("ゲーム開始の送信に失敗しました");
@@ -207,7 +208,7 @@ const onClickStart = async () => {
 }
 
 .startBtn:hover {
-  /* background-color: #45a049; */
+  opacity: 0.8;
 }
 
 .quitBtn {

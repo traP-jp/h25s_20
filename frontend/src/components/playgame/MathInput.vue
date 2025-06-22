@@ -55,10 +55,11 @@ import { apiClient } from "@/api";
 
 const expression = ref("");
 const board = defineModel<number[]>("board");
-const version = ref(0); // フォーミュラのバージョン管理
+const version = defineModel<number>("version");
 
 // 親コンポーネントからroomを注入
 import type { Room } from "@/lib/types";
+import { encodePoland } from "@/lib/solver/encodePoland";
 const currentRoom = defineModel<Room | null>("currentRoom");
 
 const handleKeydown = (event: KeyboardEvent) => {
@@ -116,17 +117,17 @@ watch(expression, async (newValue) => {
   if (result["input"] === "" && newValue.trim() !== "" && currentRoom.value) {
     console.log("10に到達し、消せる列が存在します。自動提出します。");
 
+    // 逆ポーランド記法に変換
     try {
       const submission = {
         version: version.value,
-        formula: newValue,
+        formula: encodePoland(newValue),
       };
 
       const response = await apiClient.submitFormula(currentRoom.value.roomId, submission);
 
       if (response.success) {
         console.log("数式が正常に提出されました:", response.data);
-        version.value++; // バージョンを更新
         // 提出成功時は入力をクリアし、バックエンドからのWebSocket更新を待つ
         expression.value = "";
       } else {

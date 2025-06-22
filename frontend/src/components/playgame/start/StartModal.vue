@@ -2,7 +2,7 @@
   <!-- start -->
   <OverlayModal v-if="showStartModal" @close="showStartModal = false">
     <StartUserList :class="$style.userList" />
-    <StartControl v-model:showStartModal="showStartModal" />
+    <StartControl v-model:showResultModal="showStartModal" />
   </OverlayModal>
 </template>
 
