@@ -24,16 +24,10 @@
     <StartModal />
     <ResultModal />
     <!-- Debug controls for WebSocket -->
-    <div style="position: fixed; bottom: 10px; left: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
-      <button @click="debugStartGame" style="padding: 5px 10px; font-size: 12px;">
-        Debug Start Game
-      </button>
-      <button @click="debugUpdateBoard" style="padding: 5px 10px; font-size: 12px;">
-        Debug Update Board
-      </button>
-      <button @click="debugStartCountdown(3)" style="padding: 5px 10px; font-size: 12px;">
-        Debug Countdown
-      </button>
+    <div style="position: fixed; bottom: 10px; left: 10px; display: flex; gap: 10px; flex-wrap: wrap">
+      <button @click="debugStartGame" style="padding: 5px 10px; font-size: 12px">Debug Start Game</button>
+      <button @click="debugUpdateBoard" style="padding: 5px 10px; font-size: 12px">Debug Update Board</button>
+      <button @click="debugStartCountdown(3)" style="padding: 5px 10px; font-size: 12px">Debug Countdown</button>
     </div>
     <CountDown v-if="countdown >= 0" :time="countdown" />
   </div>
@@ -43,7 +37,13 @@
 import { ref, watch, provide, onMounted, onBeforeUnmount } from "vue";
 import { useRoute } from "vue-router";
 import { roomData } from "@/lib/sample-data";
-import { useWebSocket, type WebSocketEvent, type BoardUpdateEventContent, type CountdownEventContent, WS_EVENTS } from "@/lib/websocket";
+import {
+  type WebSocketEvent,
+  type BoardUpdateEventContent,
+  type CountdownEventContent,
+  WS_EVENTS,
+} from "@/lib/websocket";
+import { useWebSocketStore } from "@/store";
 import TopBar from "@/components/playgame/TopBar.vue";
 import type { Room } from "@/lib/types";
 
@@ -60,9 +60,8 @@ import TextMark from "@/components/TextMark.vue";
 const route = useRoute();
 const currentRoom = ref<Room | null>(null);
 
-// WebSocket通信の初期化
-const wsUrl = ref<string>("");
-let wsManager: ReturnType<typeof useWebSocket> | null = null;
+// WebSocketストアを取得
+const webSocketStore = useWebSocketStore();
 
 // ゲーム状態
 const gameScore = ref(0);
@@ -73,7 +72,7 @@ const countdown = ref(-1); // -1 means hide the countdown screen
 // WebSocketイベントハンドラー
 function handleWebSocketEvent(event: WebSocketEvent) {
   console.log("PlayView受信イベント:", event);
-  
+
   switch (event.event) {
     case WS_EVENTS.BOARD_UPDATED:
       const boardEvent = event.content as BoardUpdateEventContent;
@@ -86,27 +85,27 @@ function handleWebSocketEvent(event: WebSocketEvent) {
         // 他プレイヤーのスコア更新処理も実装可能
       }
       break;
-      
+
     case WS_EVENTS.COUNTDOWN_START:
       const countdownStartEvent = event.content as CountdownEventContent;
       if (countdownStartEvent.countdown !== undefined) {
         startCountdown(countdownStartEvent.countdown);
       }
       break;
-      
+
     case WS_EVENTS.COUNTDOWN:
       const countdownEvent = event.content as CountdownEventContent;
       if (countdownEvent.count !== undefined) {
         countdown.value = countdownEvent.count;
       }
       break;
-      
+
     case WS_EVENTS.GAME_STARTED:
       gameStarted.value = true;
       countdown.value = -1;
       startGameTimer();
       break;
-      
+
     case WS_EVENTS.GAME_ENDED:
       gameStarted.value = false;
       stopGameTimer();
@@ -125,7 +124,7 @@ let gameTimer: number | null = null;
 
 function startGameTimer() {
   if (gameTimer) return;
-  
+
   gameTimer = setInterval(() => {
     if (gameTime.value > 0) {
       gameTime.value--;
@@ -153,23 +152,24 @@ async function startCountdown(startNum: number) {
 
 // 盤面更新をサーバーに送信
 function sendBoardUpdate(newBoard: number[], gainScore: number) {
-  if (!wsManager || !wsManager.isConnected.value || !currentRoom.value) return;
-  
+  if (!currentRoom.value) return;
+
   const boardUpdateEvent = {
-    event: 'board_update',
+    event: "board_update",
     content: {
       room_id: currentRoom.value.roomId,
       user_id: getCurrentUserId(),
       board: {
         content: newBoard,
         version: Date.now(), // 簡易的なバージョン管理
-        size: 16
+        size: 16,
       },
-      gain_score: gainScore
-    }
+      gain_score: gainScore,
+    },
   };
-  
-  wsManager.send(boardUpdateEvent);
+
+  // グローバルWebSocketストア経由で送信
+  webSocketStore.sendMessage(boardUpdateEvent);
 }
 
 // ルーターから渡された情報を取得
@@ -194,29 +194,26 @@ onMounted(() => {
   }
 
   console.log("Current room:", currentRoom.value);
-  
-  // WebSocket接続の初期化
-  if (currentRoom.value) {
-    const username = "debug_user"; // 実際の実装では認証情報から取得
-    wsUrl.value = `ws://localhost:8080/ws?username=${username}&room_id=${currentRoom.value.roomId}`;
-    // WebSocketマネージャーを再初期化
-    initializeWebSocket();
+
+  // グローバルWebSocketストアに現在のコンポーネントのイベントハンドラーを設定
+  // 既存のWebSocket接続がない場合は、ローカルストレージからユーザー名を取得して接続
+  if (!webSocketStore.getWebSocketManager()) {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      console.log("WebSocket接続が存在しないため、新しく接続します:", storedUsername);
+      webSocketStore.initializeWebSocket(storedUsername, handleWebSocketEvent);
+    }
+  } else {
+    console.log("既存のWebSocket接続を使用します");
+    // 既存の接続があっても、このコンポーネント用のイベントハンドラーを設定
+    // TODO: 複数のイベントハンドラーをサポートするよう改善が必要
   }
 });
 
-// WebSocket接続を初期化
-function initializeWebSocket() {
-  if (wsUrl.value) {
-    wsManager = useWebSocket(wsUrl.value, handleWebSocketEvent);
-    wsManager.connect();
-  }
-}
-
 onBeforeUnmount(() => {
   stopGameTimer();
-  if (wsManager) {
-    wsManager.destroy();
-  }
+  // グローバルWebSocketは他のコンポーネントでも使用される可能性があるため、
+  // ここでは接続を切断しない
 });
 
 // 初期盤面を生成する関数
@@ -247,11 +244,12 @@ const showResultModal = ref(false);
 
 provide("showStartModal", showStartModal);
 provide("showResultModal", showResultModal);
+provide("currentRoom", currentRoom);
 
 // 盤面の変更を監視してWebSocketで送信
 watch(board, (newBoard: number[], oldBoard: number[]) => {
   console.log("Board updated:", newBoard);
-  
+
   // ゲームが開始されていて、実際に盤面が変更された場合のみ送信
   if (gameStarted.value && oldBoard && JSON.stringify(newBoard) !== JSON.stringify(oldBoard)) {
     // スコア計算（簡易実装）
@@ -277,7 +275,7 @@ function calculateScoreGain(newBoard: number[], oldBoard: number[]): number {
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+  return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
 }
 
 // デバッグ関数

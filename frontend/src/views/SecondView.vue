@@ -12,11 +12,9 @@ let retryTimeout: number | null = null; // retrtTimeout はタイマーの ID。
 const notificationStore = useNotificationStore();
 
 const connectWebSocket = () => {
-  // ws.value = new WebSocket("ws://localhost:8080");
+  // ws.value = new WebSocket("ws://10ten.trap.show");
   // ws.value = new WebSocket("wss://echo.websocket.org");
-  ws.value = new WebSocket(
-    "wss://kaitoyama-websocket-poc.trap.show/ws?room_id=room1&user_id=kitsne"
-  );
+  ws.value = new WebSocket("wss://kaitoyama-websocket-poc.trap.show/ws?room_id=room1&user_id=kitsne");
 
   ws.value.onopen = () => {
     console.log("WebSocket connected.");
@@ -76,10 +74,7 @@ onUnmounted(() => {
     <button @click="ws?.close()">Close</button>
     <p v-if="!isConnected">Reconnecting...</p>
     <ul>
-      <li
-        v-for="(notification, index) in notificationStore.notifications"
-        :key="index"
-      >
+      <li v-for="(notification, index) in notificationStore.notifications" :key="index">
         {{ notification }}
       </li>
     </ul>
