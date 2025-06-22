@@ -9,26 +9,15 @@
       </div>
       <div :class="$style.right">
         <TextMark text="players" bgColor="#bb0000" :class="$style.playerMark" />
-        <OpponentInfo
-          v-for="player in players"
-          :key="player.name"
-          :id="player.name"
-          :score="player.score"
-        />
+        <OpponentInfo v-for="player in players" :key="player.name" :id="player.name" :score="player.score" />
       </div>
     </div>
     <div :class="$style.board">
-      <MainGameBoard
-        v-model:board="board"
-        :highlighted-numbers="highlightedNumbers"
-      />
+      <MainGameBoard v-model:board="board" :highlighted-numbers="highlightedNumbers" />
     </div>
 
     <div :class="$style.inputbox">
-      <MathInput
-        v-model:board="board"
-        v-model:current-expression="currentExpression"
-      />
+      <MathInput v-model:board="board" v-model:current-expression="currentExpression" />
     </div>
 
     <StartModal />
@@ -62,6 +51,9 @@ import StartModal from "@/components/playgame/start/StartModal.vue";
 import ResultModal from "@/components/playgame/result/ResultModal.vue";
 import CountDown from "@/components/playgame/CountDown.vue";
 import TextMark from "@/components/TextMark.vue";
+
+import { onMounted, onBeforeUnmount } from "vue";
+import { useRoute } from "vue-router";
 
 // ルーターから情報を取得
 const route = useRoute();
@@ -309,7 +301,6 @@ async function debugStartCountdown(startNum: number) {
   debugStartGame(); // カウントダウン後にゲーム開始
 }
 
-const board = ref([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8]);
 const currentExpression = ref("");
 
 // 現在の数式に含まれる数字を抽出してハイライト対象を決定
