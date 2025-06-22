@@ -17,7 +17,9 @@
         />
       </div>
     </div>
-    <button :disabled="!isValid" :class="$style.button" @click="onClick">ゲームをはじめる</button>
+    <button :disabled="!isValid" :class="$style.button" @click="onClick">
+      ゲームをはじめる
+    </button>
   </div>
 </template>
 
@@ -31,7 +33,7 @@ const router = useRouter();
 const isComposing = ref(false);
 
 const onClick = () => {
-  router.push("/");
+  router.push("/rooms");
 };
 
 const onEnter = () => {
@@ -49,7 +51,9 @@ const onCompositionEnd = () => {
 };
 
 const isValid = computed(() => {
-  return username.value.trim().length >= 1 && username.value.trim().length <= 32;
+  return (
+    username.value.trim().length >= 1 && username.value.trim().length <= 32
+  );
 });
 </script>
 

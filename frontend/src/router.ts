@@ -5,6 +5,11 @@ const router = createRouter({
   routes: [
     {
       path: "/",
+      component: () => import("@/views/RouteView.vue"),
+      meta: { showLayout: false },
+    },
+    {
+      path: "/rooms",
       component: () => import("@/views/RoomSelectView.vue"),
       meta: { showLayout: false },
     },
