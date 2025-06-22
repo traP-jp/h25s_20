@@ -137,7 +137,9 @@ const addSymbol = (value: string) => {
       expression.value += value;
       return;
     } else if (/[+\-*/]/.test(value)) {
-      expression.value = expression.value.slice(0, -1) + value;
+      if (expression.value.length !== 0) {
+        expression.value = expression.value.slice(0, -1) + value;
+      }
       return;
     }
   } else if (last === "(") {
