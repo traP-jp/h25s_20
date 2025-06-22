@@ -19,6 +19,9 @@ DELETE FROM user WHERE id = ?;
 -- name: GetUserIDByUsername :one
 SELECT id FROM user WHERE username = ?;
 
+-- name: GetUserByUsername :one
+SELECT * FROM user WHERE username = ?;
+
 -- name: CreateScore :execresult
 INSERT INTO score (user_id,value) VALUES(?,?);
 

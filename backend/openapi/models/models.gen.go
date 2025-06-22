@@ -13,6 +13,16 @@ const (
 	START       PostRoomsRoomIdActionsJSONBodyAction = "START"
 )
 
+// AuthResponse defines model for AuthResponse.
+type AuthResponse struct {
+	// Token JWT access token
+	Token string `json:"token"`
+	User  struct {
+		Id       int    `json:"id"`
+		Username string `json:"username"`
+	} `json:"user"`
+}
+
 // Board defines model for Board.
 type Board struct {
 	Content   []int `json:"content"`
@@ -40,7 +50,7 @@ type RoomResultItem struct {
 
 // UserCreate defines model for UserCreate.
 type UserCreate struct {
-	// Password SHA256 hashed password
+	// Password Plain text password
 	Password string `json:"password"`
 	Username string `json:"username"`
 }

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/kaitoyama/kaitoyama-server-template/internal/domain"
+	"github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/auth"
 	wsManager "github.com/kaitoyama/kaitoyama-server-template/internal/infrastructure/websocket"
 	"github.com/kaitoyama/kaitoyama-server-template/openapi/models"
 	"github.com/labstack/echo/v4"
@@ -26,16 +27,22 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		})
 	}
 
-	// TODO: 実際のユーザー認証を実装した後に、ユーザー情報を取得する
-	// 現在はテスト用のプレイヤーを使用
-	var mockPlayer = domain.Player{
-		ID:       1,
-		UserName: "testuser",
+	// 認証されたユーザー情報を取得
+	user, ok := auth.GetUserFromContext(c)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not authenticated",
+		})
+	}
+
+	player := domain.Player{
+		ID:       int(user.UserID),
+		UserName: user.Username,
 	}
 
 	switch req.Action {
 	case models.JOIN:
-		_, err := h.roomUsecase.AddPlayerToRoom(roomId, mockPlayer)
+		_, err := h.roomUsecase.AddPlayerToRoom(roomId, player)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to join room: " + err.Error(),
@@ -44,7 +51,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 		// WebSocketでルームに参加
 		if h.WebSocketHandler != nil {
-			err = h.WebSocketHandler.JoinRoom(mockPlayer.ID, roomId)
+			err = h.WebSocketHandler.JoinRoom(player.ID, roomId)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{
 					"error": "Failed to join WebSocket room: " + err.Error(),
@@ -54,30 +61,30 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 		// WebSocketでルーム全員に通知
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerJoined, mockPlayer.ID, mockPlayer.UserName)
+			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerJoined, player.ID, player.UserName)
 		}
 		return c.NoContent(http.StatusNoContent)
 
 	case models.READY:
-		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, mockPlayer.ID, true)
+		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, true)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to update ready status: " + err.Error(),
 			})
 		}
 		// WebSocketでルーム全員に通知
-		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerReady, mockPlayer.ID, mockPlayer.UserName)
+		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerReady, player.ID, player.UserName)
 		return c.NoContent(http.StatusNoContent)
 
 	case models.CANCEL:
-		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, mockPlayer.ID, false)
+		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, false)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to cancel ready status: " + err.Error(),
 			})
 		}
 
-		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerCanceled, mockPlayer.ID, mockPlayer.UserName)
+		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerCanceled, player.ID, player.UserName)
 		return c.NoContent(http.StatusNoContent)
 
 	case models.START:
@@ -90,7 +97,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 		// ゲーム開始権限チェック（最初のプレイヤーのみが開始可能）
 		firstPlayer := room.GetFirstPlayer()
-		if firstPlayer == nil || firstPlayer.ID != mockPlayer.ID {
+		if firstPlayer == nil || firstPlayer.ID != player.ID {
 			return c.JSON(http.StatusForbidden, map[string]string{
 				"error": "Only the first player can start the game",
 			})
@@ -116,7 +123,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 	case models.ABORT:
 		// WebSocketからルームを退出
 		if h.WebSocketHandler != nil {
-			err := h.WebSocketHandler.LeaveRoom(mockPlayer.ID)
+			err := h.WebSocketHandler.LeaveRoom(player.ID)
 			if err != nil {
 				return c.JSON(http.StatusInternalServerError, map[string]string{
 					"error": "Failed to leave WebSocket room: " + err.Error(),
@@ -125,20 +132,20 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		// プレイヤーをルームから削除
-		_, err := h.roomUsecase.RemovePlayerFromRoom(roomId, mockPlayer.ID)
+		_, err := h.roomUsecase.RemovePlayerFromRoom(roomId, player.ID)
 		if err != nil {
 			// プレイヤーが見つからない場合でもエラーにしない（既に退出済みの可能性）
 		}
 
 		// WebSocketでの通知
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerLeft, mockPlayer.ID, mockPlayer.UserName)
+			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerLeft, player.ID, player.UserName)
 		}
 
 		return c.NoContent(http.StatusNoContent)
 
 	case models.CLOSERESULT:
-		_, err := h.roomUsecase.CloseResult(roomId, mockPlayer.ID)
+		_, err := h.roomUsecase.CloseResult(roomId, player.ID)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to close result: " + err.Error(),
@@ -146,7 +153,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		// WebSocketでルーム全員に通知
-		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventResultClosed, mockPlayer.ID, mockPlayer.UserName)
+		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventResultClosed, player.ID, player.UserName)
 		return c.NoContent(http.StatusNoContent)
 
 	default:
@@ -163,10 +170,17 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 		return c.JSON(http.StatusBadRequest, map[string]string{"error": "Invalid request body"})
 	}
 
-	// TODO: 実際のユーザー認証を実装した後に、ユーザー情報を取得する
-	mockPlayer := domain.Player{
-		ID:       1,
-		UserName: "testuser",
+	// 認証されたユーザー情報を取得
+	user, ok := auth.GetUserFromContext(c)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not authenticated",
+		})
+	}
+
+	player := domain.Player{
+		ID:       int(user.UserID),
+		UserName: user.Username,
 	}
 
 	room, err := h.roomUsecase.GetRoomByID(roomId)
@@ -178,8 +192,8 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 
 	// プレイヤーがルームに参加しているかチェック
 	playerInRoom := false
-	for _, player := range room.Players {
-		if player.ID == mockPlayer.ID {
+	for _, roomPlayer := range room.Players {
+		if roomPlayer.ID == player.ID {
 			playerInRoom = true
 			break
 		}
@@ -206,7 +220,7 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 	}
 
 	// バージョン付きの細かい衝突検出を使用
-	board, gainScore, err := h.roomUsecase.ApplyFormulaWithVersion(roomId, mockPlayer.ID, req.Formula, req.Version)
+	board, gainScore, err := h.roomUsecase.ApplyFormulaWithVersion(roomId, player.ID, req.Formula, req.Version)
 	if err != nil {
 		// 衝突エラーの場合は409を返す
 		if strings.Contains(err.Error(), "他のプレイヤーによって更新されています") ||
@@ -236,7 +250,7 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 			Version: board.Version,
 			Size:    board.Size,
 		}
-		h.WebSocketHandler.SendBoardUpdateEventTyped(roomId, mockPlayer.ID, mockPlayer.UserName, boardData, gainScore)
+		h.WebSocketHandler.SendBoardUpdateEventTyped(roomId, player.ID, player.UserName, boardData, gainScore)
 	}
 
 	// HTTPレスポンス（提出者に対する結果）
@@ -249,10 +263,17 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 
 // GetRoomsRoomIdResult returns the results of a specific room
 func (h *Handler) GetRoomsRoomIdResult(c echo.Context, roomId int) error {
-	// TODO: 実際のユーザー認証を実装した後に、ユーザー情報を取得する
-	mockPlayer := domain.Player{
-		ID:       1,
-		UserName: "testuser",
+	// 認証されたユーザー情報を取得
+	user, ok := auth.GetUserFromContext(c)
+	if !ok {
+		return c.JSON(http.StatusUnauthorized, map[string]string{
+			"error": "User not authenticated",
+		})
+	}
+
+	player := domain.Player{
+		ID:       int(user.UserID),
+		UserName: user.Username,
 	}
 
 	room, err := h.roomUsecase.GetRoomByID(roomId)
@@ -264,8 +285,8 @@ func (h *Handler) GetRoomsRoomIdResult(c echo.Context, roomId int) error {
 
 	// プレイヤーがルームに参加しているかチェック
 	playerInRoom := false
-	for _, player := range room.Players {
-		if player.ID == mockPlayer.ID {
+	for _, roomPlayer := range room.Players {
+		if roomPlayer.ID == player.ID {
 			playerInRoom = true
 			break
 		}
@@ -279,10 +300,10 @@ func (h *Handler) GetRoomsRoomIdResult(c echo.Context, roomId int) error {
 
 	// 結果を構築
 	var results []models.RoomResultItem
-	for _, player := range room.Players {
+	for _, roomPlayer := range room.Players {
 		results = append(results, models.RoomResultItem{
-			User:  player.UserName,
-			Score: player.Score,
+			User:  roomPlayer.UserName,
+			Score: roomPlayer.Score,
 		})
 	}
 
