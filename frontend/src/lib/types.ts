@@ -2,7 +2,12 @@ export type Room = {
   isOpened: boolean;
   roomId: number;
   roomName: string;
-  users: Player[];
+  users: User[];
+};
+
+export type User = {
+  username: string;
+  isReady: boolean;
 };
 
 export type Result = {

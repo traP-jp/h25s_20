@@ -95,6 +95,7 @@ export const WS_EVENTS = {
   PLAYER_JOINED: "player_joined",
   PLAYER_READY: "player_ready",
   PLAYER_CANCELED: "player_canceled",
+  PLAYER_ALL_READY: "player_all_ready",
   PLAYER_LEFT: "player_left",
   ROOM_STATE_CHANGED: "room_state_changed",
   GAME_STARTED: "game_started",
@@ -111,7 +112,7 @@ export class WebSocketManager {
   private ws: WebSocket | null = null;
   private reconnectAttempts = 0;
   private readonly maxReconnectAttempts = 5;
-  private connectTimeout: number | null = null;
+  private connectTimeout: ReturnType<typeof setTimeout> | null = null;
 
   // リアクティブな状態
   public isConnected = ref(false);
@@ -243,6 +244,11 @@ export class WebSocketManager {
       case WS_EVENTS.PLAYER_CANCELED:
         const canceledContent = wsEvent.content as PlayerEventContent;
         this.addMessage(`❌ プレイヤー準備キャンセル: ${canceledContent.user_name} が準備をキャンセル`);
+        break;
+
+      case WS_EVENTS.PLAYER_ALL_READY:
+        const allReadyContent = wsEvent.content as PlayerEventContent;
+        this.addMessage(`🎉 全プレイヤー準備完了: ${allReadyContent.message || 'All players are ready!'}`);
         break;
 
       case WS_EVENTS.PLAYER_LEFT:
