@@ -383,6 +383,9 @@ func (r *Room) ResetRoom() error {
 		r.Players[i].IsReady = false
 		r.Players[i].HasClosedResult = false
 	}
+	// 連続正解情報もリセット
+	r.LastCorrectPlayerID = 0
+	r.StreakCount = 0
 	return r.TransitionTo(StateWaitingForPlayers)
 }
 
