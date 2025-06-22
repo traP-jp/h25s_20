@@ -23,6 +23,27 @@ const router = createRouter({
       component: () => import("@/views/PlayView.vue"),
       meta: { showLayout: true },
     },
+    {
+      path: "/play",
+      component: () => import("@/views/PlayView.vue"),
+      meta: { showLayout: true },
+    },
+    // websoket デバック用
+    {
+      path: "/first",
+      component: () => import("@/views/FirstView.vue"),
+      meta: { showLayout: true },
+    },
+    {
+      path: "/second",
+      component: () => import("@/views/SecondView.vue"),
+      meta: { showLayout: true },
+    },
+    {
+      path: "/third",
+      component: () => import("@/views/ThirdView.vue"),
+      meta: { showLayout: true },
+    },
   ],
 });
 
