@@ -305,6 +305,7 @@ func (r *RoomUsecase) ApplyFormulaWithVersion(roomID int, playerID int, formula 
 		room.StreakCount = 1
 		room.LastCorrectPlayerID = playerID
 	}
+	
 	// スコア計算: 消した組数 * (5+5*"連続正解数")点
 	gainScore := matchCount * (5 + 5*room.StreakCount)
 
