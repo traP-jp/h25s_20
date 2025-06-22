@@ -23,6 +23,11 @@ const router = createRouter({
       component: () => import("@/views/PlayView.vue"),
       meta: { showLayout: true },
     },
+    {
+      path: "/help",
+      component: () => import("@/views/HelpView.vue"),
+      meta: { showLayout: true },
+    },
   ],
 });
 
