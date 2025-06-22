@@ -119,6 +119,12 @@ watch(expression, async (newValue) => {
 
     // 逆ポーランド記法に変換
     try {
+      // versionがundefinedの場合はsubmitしない
+      if (version.value === undefined) {
+        console.error("バージョンが設定されていません");
+        return;
+      }
+
       const submission = {
         version: version.value,
         formula: encodePoland(newValue),

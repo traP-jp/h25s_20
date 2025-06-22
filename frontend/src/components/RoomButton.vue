@@ -5,8 +5,8 @@
       <UserIcon
         :class="$style.icon"
         v-for="player in room.users.slice(0, 3)"
-        :key="player.id"
-        :id="player.id"
+        :key="player.username"
+        :id="player.username"
         :size="20"
       />
       <div :class="$style.surplus" v-if="room.users.length > 3">+{{ room.users.length - 3 }}</div>
