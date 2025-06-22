@@ -57,6 +57,7 @@ import { checkMath } from "@/lib/board-update";
 
 const expression = ref("");
 const board = defineModel<number[]>("board");
+const currentExpression = defineModel<string>("currentExpression");
 
 const handleKeydown = (event: KeyboardEvent) => {
   // 数字キー (1-9)
@@ -74,14 +75,14 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 
   // 括弧キー
-  if (event.key === '(' || event.key === ')') {
+  if (event.key === "(" || event.key === ")") {
     addParentheses();
     event.preventDefault();
     return;
   }
 
   // バックスペースキー
-  if (event.key === 'Backspace') {
+  if (event.key === "Backspace") {
     backspace();
     event.preventDefault();
     return;
@@ -89,11 +90,11 @@ const handleKeydown = (event: KeyboardEvent) => {
 };
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
+  window.addEventListener("keydown", handleKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener("keydown", handleKeydown);
 });
 
 watch(expression, (newValue) => {
@@ -101,6 +102,11 @@ watch(expression, (newValue) => {
   const result = checkMath(board.value, newValue);
   board.value = result["board"];
   expression.value = result["input"];
+
+  // 親コンポーネントに現在の数式を伝達
+  if (currentExpression) {
+    currentExpression.value = newValue;
+  }
 });
 
 const viewExpression = computed(() => {
