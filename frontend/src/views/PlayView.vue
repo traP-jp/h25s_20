@@ -262,14 +262,16 @@ onMounted(() => {
         gameTime.value = 120; // 120秒ゲーム
         startGameTimer();
 
+        console.log(roomPlayersStore.players);
+
         // プレイヤースコアを初期化
         playerScores.value.clear();
         // 現在のルームのプレイヤー情報からスコアを初期化
         for (const player of roomPlayersStore.players) {
-          if (player.id) {
+          if (player.id !== "0") {
             playerScores.value.set(parseInt(player.id), {
               name: player.name,
-              score: 0
+              score: 0,
             });
           }
         }
@@ -292,18 +294,18 @@ onMounted(() => {
             console.log("Updating board from WebSocket:", boardContent.board.content);
             board.value = boardContent.board.content;
           }
-          
+
           // プレイヤーのスコアを更新
           if (boardContent.gain_score && boardContent.user_id) {
             const userId = boardContent.user_id;
             const gainScore = boardContent.gain_score;
-            
+
             // 自分のスコアを更新
             if (userId === getCurrentUserId()) {
               gameScore.value += gainScore;
               console.log("Score updated (own submission):", gameScore.value, "gained:", gainScore);
             }
-            
+
             // 全プレイヤーのスコアマップを更新
             if (playerScores.value.has(userId)) {
               const playerData = playerScores.value.get(userId)!;
@@ -313,12 +315,13 @@ onMounted(() => {
               // 新しいプレイヤーの場合、追加
               playerScores.value.set(userId, {
                 name: boardContent.user_name || `Player ${userId}`,
-                score: gainScore
+                score: gainScore,
               });
               console.log(`Added new player ${boardContent.user_name} with score: ${gainScore}`);
+              console.log("Current player scores:", playerScores.value);
             }
           }
-          
+
           version.value = boardContent.board.version;
         }
         break;
@@ -334,9 +337,9 @@ onMounted(() => {
         const finalScores = Array.from(playerScores.value.entries()).map(([userId, playerData]) => ({
           user_id: userId,
           user_name: playerData.name,
-          score: playerData.score
+          score: playerData.score,
         }));
-        
+
         if (finalScores.length > 0) {
           gameResultStore.updatePlayers(finalScores);
           console.log("Updated game result store with tracked scores:", finalScores);
