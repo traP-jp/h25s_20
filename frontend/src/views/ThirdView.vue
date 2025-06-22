@@ -3,7 +3,7 @@ import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useWebSocket } from "@/lib/websocket";
 
 // 接続設定
-const wsUrl = "ws://10ten.trap.show/api/ws?username=debug_user";
+const wsUrl = "wss://10ten.trap.show/api/ws?username=debug_user";
 
 // WebSocket接続の初期化
 const {

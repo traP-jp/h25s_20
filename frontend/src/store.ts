@@ -29,7 +29,7 @@ export const useWebSocketStore = defineStore("webSocketStore", () => {
     }
 
     currentUsername.value = username;
-    const wsUrl = `ws://10ten.trap.show/api/ws?username=${encodeURIComponent(username)}`;
+    const wsUrl = `wss://10ten.trap.show/api/ws?username=${encodeURIComponent(username)}`;
 
     wsManager.value = useWebSocket(wsUrl, (event: WebSocketEvent) => {
       console.log("Global WebSocket received:", event);

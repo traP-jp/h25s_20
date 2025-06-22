@@ -12,7 +12,7 @@ let retryTimeout: number | null = null; // retrtTimeout はタイマーの ID。
 const notificationStore = useNotificationStore();
 
 const connectWebSocket = () => {
-  // ws.value = new WebSocket("ws://10ten.trap.show");
+  // ws.value = new WebSocket("wss://10ten.trap.show");
   // ws.value = new WebSocket("wss://echo.websocket.org");
   ws.value = new WebSocket("wss://kaitoyama-websocket-poc.trap.show/ws?room_id=room1&user_id=kitsne");
 
