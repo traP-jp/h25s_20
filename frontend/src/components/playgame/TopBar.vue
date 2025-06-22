@@ -4,7 +4,7 @@
       <UserIcon :class="$style.myIcon" :id="`me`" :size="40" />
       <div :class="$style.myName">{{ "me" }}</div>
       <div :class="$style.right">
-        <TextMark :text="room?.name || ''" :bgColor="`#008800`" />
+        <TextMark :text="room?.roomName || ''" :bgColor="`#008800`" />
         <img src="/logo.svg" alt="Logo" :class="$style.logo" />
       </div>
     </div>
@@ -12,11 +12,14 @@
 </template>
 
 <script setup lang="ts">
-import { defineModel } from "vue";
 import type { Room } from "@/lib/types.ts";
 import UserIcon from "@/components/UserIcon.vue";
 import TextMark from "@/components/TextMark.vue";
-const room = defineModel<Room>("room");
+
+// propsからroomを受け取る
+defineProps<{
+  room?: Room;
+}>();
 </script>
 
 <style module>

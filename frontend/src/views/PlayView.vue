@@ -1,6 +1,6 @@
 <template>
   <div :class="$style.container">
-    <TopBar v-model:room="roomData[0]" />
+    <TopBar :room="currentRoom || roomData[0]" />
     <div :class="$style.main">
       <div :class="$style.statistics">
         <TextMark text="score" bgColor="#ffdd44" />
@@ -26,25 +26,71 @@
     <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
     <button @click="debugStartCountdown(3)">Debug Countdown</button>
     <CountDown v-if="countdown >= 0" :time="countdown" />
-
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, provide } from "vue";
+import { ref, watch, provide, onMounted } from "vue";
+import { useRoute } from "vue-router";
 import { roomData } from "@/lib/sample-data";
 import TopBar from "@/components/playgame/TopBar.vue";
+import type { Room } from "@/lib/types";
 
 import OpponentInfo from "@/components/playgame/OpponentInfo.vue";
 import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
 import MathInput from "@/components/playgame/MathInput.vue";
 
-import MyInfo from "@/components/playgame/MyInfo.vue";
 import StartModal from "@/components/playgame/start/StartModal.vue";
 import ResultModal from "@/components/playgame/result/ResultModal.vue";
 import CountDown from "@/components/playgame/CountDown.vue";
 import TextMark from "@/components/TextMark.vue";
 
+// ルーターから情報を取得
+const route = useRoute();
+const currentRoom = ref<Room | null>(null);
+
+// ルーターから渡された情報を取得
+onMounted(() => {
+  // ルートのstateからroom情報を取得
+  if (history.state && history.state.room) {
+    currentRoom.value = history.state.room;
+  } else {
+    // state経由でない場合はクエリパラメータから復元
+    const roomId = route.params.roomId as string;
+    const roomName = route.query.roomName as string;
+    const isOpened = route.query.isOpened === "true";
+
+    if (roomId && roomName) {
+      currentRoom.value = {
+        roomId: parseInt(roomId),
+        roomName,
+        isOpened,
+        users: [],
+      };
+    }
+  }
+
+  console.log("Current room:", currentRoom.value);
+});
+
+// 初期盤面を生成する関数
+function generateInitialBoard(): number[] {
+  // 1-9の数字をランダムに4つずつ選んで16個の配列を作成
+  const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  const board: number[] = [];
+
+  // 各数字から4つまでランダムに選択
+  for (let i = 0; i < 16; i++) {
+    const randomIndex = Math.floor(Math.random() * numbers.length);
+    board.push(numbers[randomIndex]);
+  }
+
+  return board;
+}
+
+const board = ref(generateInitialBoard());
+
+// プレイヤー情報（後でWebSocketから取得する予定）
 const players = [
   { icon: "/images/player1.png", name: "Player 01", score: 30 },
   { icon: "/images/player2.png", name: "Player 02", score: 50 },
@@ -65,8 +111,6 @@ async function debugStartCountdown(startNum: number) {
   }
   countdown.value = -1;
 }
-
-const board = ref([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8]);
 
 watch(board, (newBoard: number[]) => console.log("Board updated:", newBoard));
 </script>
