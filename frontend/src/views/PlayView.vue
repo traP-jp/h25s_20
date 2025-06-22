@@ -18,12 +18,10 @@
         <OpponentInfo v-for="player in players" :key="player.name" :id="player.name" :score="player.score" />
       </div>
     </div>
-    <div :class="$style.inputbox">
-      <MathInput v-model:board="board" />
-    </div>
+    <MathInput v-model:board="board" />
 
-    <StartModal />
-    <ResultModal />
+    <!-- <StartModal />
+    <ResultModal /> -->
   </div>
 </template>
 
@@ -35,7 +33,6 @@ import TopBar from "@/components/playgame/TopBar.vue";
 import OpponentInfo from "@/components/playgame/OpponentInfo.vue";
 import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
 import MathInput from "@/components/playgame/MathInput.vue";
-import MyInfo from "@/components/playgame/MyInfo.vue";
 import StartModal from "@/components/playgame/start/StartModal.vue";
 import ResultModal from "@/components/playgame/result/ResultModal.vue";
 import TextMark from "@/components/TextMark.vue";
@@ -61,12 +58,11 @@ watch(board, (newBoard) => {
 <style module>
 .container {
   width: 360px;
-  height: 100vh;
-  margin: 0 auto;
-  border: 1px solid var(--border-color, #ccc);
+  height: 60vh;
+  border: 1px solid red;
   display: flex;
   flex-direction: column;
-  justify-content: flex-start;
+  justify-content: space-between;
 }
 
 .header {
