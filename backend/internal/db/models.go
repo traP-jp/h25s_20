@@ -11,7 +11,7 @@ import (
 type Score struct {
 	ID     int32 `json:"id"`
 	UserID int32 `json:"user_id"`
-	Value  int32 `json:"value"`
+	Value  int32 `json:"_value"`
 }
 
 type User struct {
