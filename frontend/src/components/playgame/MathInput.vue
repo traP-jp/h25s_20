@@ -126,6 +126,7 @@ const backspace = () => {
 <style module>
 .wrapper {
   width: 100%;
+  border: 2px solid red;
 }
 
 .preview {
@@ -143,33 +144,29 @@ const backspace = () => {
   color: black;
 }
 
-.correct {
-  color: #3b82f6; /* 青色 */
-}
-
 .container {
   margin: 30px auto 0 auto;
-  width: 350px;
+  width: 300px;
   display: flex;
   justify-content: space-between;
 }
 
 .tens {
-  height: 200px;
+  height: 170px;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
 }
 
 .tensRow {
-  width: 200px;
+  width: 170px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;
 }
 
 .symbolRow {
-  width: 130px;
+  width: 110px;
   display: flex;
   flex-direction: row;
   justify-content: space-between;

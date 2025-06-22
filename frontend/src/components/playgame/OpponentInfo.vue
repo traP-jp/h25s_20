@@ -1,39 +1,30 @@
 <template>
   <div :class="$style.user">
-    <div :class="$style.avatar"></div>
-    <div :class="$style.info">
-      <div :class="$style.name">{{ name }}</div>
-      <div :class="$style.score">{{ score }}点</div>
-    </div>
+    <UserIcon :id="id" :size="20" :class="$style.icon" />
+    <div :class="$style.score">{{ score }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
-const props = defineProps<{ icon: string; name: string; score: number }>();
-const { icon, name, score } = props;
+defineProps<{ id: string; score: number }>();
+import UserIcon from "@/components/UserIcon.vue";
 </script>
 
 <style module>
+.icon {
+  outline: black solid 2px;
+  margin-right: 8px;
+}
+
+.score {
+  font-weight: bold;
+  font-size: 12px;
+}
+
 .user {
+  width: 100%;
   display: flex;
   align-items: center;
-}
-.avatar {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  margin-right: 10px;
-  border: 2px dashed var(--border-color, #ccc);
-  /* placeholder for icon */
-}
-.info {
-  display: flex;
-  flex-direction: column;
-}
-.name {
-  font-weight: bold;
-}
-.score {
-  color: var(--accent-color, #fff);
+  margin-top: 8px;
 }
 </style>
