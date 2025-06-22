@@ -82,20 +82,23 @@ onMounted(() => {
 
 .slide {
   width: 100%;
+  max-width: 1200px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 30px;
   margin-bottom: 40px;
   overflow-y: auto;
+  padding: 20px;
 }
 
 .slideImage {
-  width: 95%;
+  width: 90%;
   max-width: 1000px;
   height: auto;
   border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin: 10px 0;
 }
 
 .button {
@@ -108,6 +111,7 @@ onMounted(() => {
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease;
+  margin-top: 20px;
 }
 
 .button:hover {
