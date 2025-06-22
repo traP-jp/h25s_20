@@ -31,7 +31,10 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	// Add middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{"http://localhost:5173"},
+		AllowMethods: []string{echo.GET, echo.PUT, echo.POST, echo.DELETE},
+	}))
 
 	// Load OpenAPI spec (use embedded file for buildpack compatibility)
 	loader := openapi3.NewLoader()
@@ -55,7 +58,7 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	wsHandler := handler.NewWebSocketHandler(wsManagerInstance, roomUsecase, userUsecase)
 
 	// WebSocket endpoint (outside of API group to avoid OpenAPI validation)
-	e.GET("/ws", wsHandler.HandleWebSocket)
+	e.GET("/api/ws", wsHandler.HandleWebSocket)
 
 	// Setup API routes
 	api := e.Group("/api")
