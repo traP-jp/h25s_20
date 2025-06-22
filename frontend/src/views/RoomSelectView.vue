@@ -13,20 +13,59 @@
 </template>
 
 <script setup lang="ts">
+import { ref, onMounted } from "vue";
 import { useRouter } from "vue-router";
-import { roomData } from "@/lib/sample-data";
+import { apiClient } from "@/api";
 import RoomButton from "@/components/RoomButton.vue";
 import type { Room } from "@/lib/types";
 
+const roomData = ref<Room[]>([]);
 const router = useRouter();
 
-function handleRoomClick(room: Room) {
-  console.log("Room clicked:", room);
+async function fetchRooms() {
+  try {
+    const response = await apiClient.getRooms();
+    if (response.success) {
+      roomData.value = response.data;
+      console.log(response.data);
+    } else {
+      console.error("Failed to fetch rooms:", response.data);
+    }
+  } catch (error) {
+    console.error("Error fetching rooms:", error);
+  }
 }
 
-const onClick = () => {
-  router.push("/help");
-};
+async function handleRoomClick(room: Room) {
+  try {
+    console.log("Joining room:", room);
+    const response = await apiClient.performRoomAction(room.roomId, { action: "JOIN" });
+
+    if (response.success) {
+      console.log("Successfully joined room:", room.roomId);
+      // ルームに参加成功後、PlayViewに遷移（ルーム情報をクエリパラメータとして渡す）
+      router.push({
+        name: "play",
+        params: { roomId: room.roomId.toString() },
+        query: {
+          roomName: room.roomName,
+          isOpened: room.isOpened.toString(),
+        },
+        state: { room },
+      });
+    } else {
+      console.error("Failed to join room:", response.data);
+      alert("ルームへの参加に失敗しました");
+    }
+  } catch (error) {
+    console.error("Error joining room:", error);
+    alert("ルームへの参加中にエラーが発生しました");
+  }
+}
+
+onMounted(() => {
+  fetchRooms();
+});
 </script>
 
 <style module>
@@ -77,5 +116,12 @@ const onClick = () => {
 
 .button:hover {
   background-color: #218838; background-color: #218838;
+}
+
+.empty {
+  text-align: center;
+  color: #666;
+  margin: 20px;
+  font-size: 16px;
 }
 </style>

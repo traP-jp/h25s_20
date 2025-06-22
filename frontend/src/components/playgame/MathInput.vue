@@ -25,10 +25,7 @@
       </div>
       <div :class="$style.tens">
         <div :class="$style.symbolRow">
-          <MathInputButton
-            icon="mdi:code-parentheses"
-            @click="addParentheses"
-          />
+          <MathInputButton icon="mdi:code-parentheses" @click="addParentheses" />
           <MathInputButton
             icon="mdi:backspace-outline"
             @click="backspace"
@@ -50,14 +47,18 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from "vue";
+import { computed, ref, onMounted, onUnmounted, inject } from "vue";
 import MathInputButton from "./MathInputButton.vue";
 import { defineModel, watch } from "vue";
 import { checkMath } from "@/lib/board-update";
+import { apiClient } from "@/api";
 
 const expression = ref("");
 const board = defineModel<number[]>("board");
-const currentExpression = defineModel<string>("currentExpression");
+const version = ref(0); // フォーミュラのバージョン管理
+
+// 親コンポーネントからroomを注入
+const currentRoom = inject<any>("currentRoom");
 
 const handleKeydown = (event: KeyboardEvent) => {
   // 数字キー (1-9)
@@ -104,16 +105,39 @@ onUnmounted(() => {
   window.removeEventListener("keydown", handleKeydown);
 });
 
-watch(expression, (newValue) => {
+watch(expression, async (newValue) => {
   if (!board.value) return;
-  const result = checkMath(board.value, newValue);
-  board.value = result["board"];
-  expression.value = result["input"];
+  // 一時的に checkMath で検証のみ行う（board は更新しない）
+  const tempBoard = [...board.value]; // 元のboardのコピーを作成
+  const result = checkMath(tempBoard, newValue);
 
-  // 親コンポーネントに現在の数式を伝達
-  if (currentExpression) {
-    currentExpression.value = newValue;
+  // 結果が10で、inputが空文字列（消せる列が存在）の場合、自動提出
+  if (result["input"] === "" && newValue.trim() !== "" && currentRoom.value) {
+    console.log("10に到達し、消せる列が存在します。自動提出します。");
+
+    try {
+      const submission = {
+        version: version.value,
+        formula: newValue,
+      };
+
+      const response = await apiClient.submitFormula(currentRoom.value.roomId, submission);
+
+      if (response.success) {
+        console.log("数式が正常に提出されました:", response.data);
+        version.value++; // バージョンを更新
+        // 提出成功時は入力をクリアし、バックエンドからのWebSocket更新を待つ
+        expression.value = "";
+      } else {
+        console.error("数式の提出に失敗しました:", response.data);
+        // 提出失敗時は入力をそのまま残す
+      }
+    } catch (error) {
+      console.error("数式提出時にエラーが発生しました:", error);
+      // エラー時も入力をそのまま残す
+    }
   }
+  // 提出に該当しない場合は何もしない（expressionの値はそのまま）
 });
 
 const viewExpression = computed(() => {
@@ -121,10 +145,7 @@ const viewExpression = computed(() => {
 });
 
 const addSymbol = (value: string) => {
-  const last =
-    expression.value.length > 0
-      ? expression.value[expression.value.length - 1]
-      : "+";
+  const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
 
   if (/[1-9]/.test(last)) {
     if (/[1-9]/.test(value)) {
@@ -172,10 +193,7 @@ const addParentheses = () => {
   console.log("openParens: ", openParens);
   console.log("closeParens: ", closeParens);
 
-  const last =
-    expression.value.length > 0
-      ? expression.value[expression.value.length - 1]
-      : "+";
+  const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
   if (/[1-9]/.test(last) || last === ")") {
     if (openParens > closeParens) {
       expression.value += ")";

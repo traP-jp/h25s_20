@@ -1,9 +1,8 @@
 export type Room = {
-  id: number;
-  name: string;
-  status: "open" | "closed";
-  resultLog: Result[];
-  players: Player[];
+  isOpened: boolean;
+  roomId: number;
+  roomName: string;
+  users: Player[];
 };
 
 export type Result = {

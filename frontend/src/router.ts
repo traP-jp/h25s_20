@@ -19,9 +19,15 @@ const router = createRouter({
       meta: { showLayout: true },
     },
     {
-      path: "/play",
+      path: "/play/:roomId?",
+      name: "play",
       component: () => import("@/views/PlayView.vue"),
       meta: { showLayout: true },
+    },
+    {
+      path: "/api-test",
+      component: () => import("@/views/ApiTestView.vue"),
+      meta: { showLayout: false },
     },
     {
       path: "/help",
