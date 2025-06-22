@@ -236,7 +236,7 @@ export class WebSocketManager {
         const joinedContent = wsEvent.content as PlayerJoinedEventContent;
         this.addMessage(
           `👤 プレイヤー参加: ${joinedContent.user_name} (ID: ${joinedContent.user_id}) がルーム ${joinedContent.room_id} に参加\n` +
-          `🏠 ルーム状態: ${joinedContent.room.state}, プレイヤー数: ${joinedContent.room.players.length}`
+            `🏠 ルーム状態: ${joinedContent.room.state}, プレイヤー数: ${joinedContent.room.players.length}`
         );
         break;
 
@@ -252,14 +252,14 @@ export class WebSocketManager {
 
       case WS_EVENTS.PLAYER_ALL_READY:
         const allReadyContent = wsEvent.content as PlayerEventContent;
-        this.addMessage(`🎉 全プレイヤー準備完了: ${allReadyContent.message || 'All players are ready!'}`);
+        this.addMessage(`🎉 全プレイヤー準備完了: ${allReadyContent.message || "All players are ready!"}`);
         break;
 
       case WS_EVENTS.PLAYER_LEFT:
         const leftContent = wsEvent.content as PlayerLeftEventContent;
         this.addMessage(
           `👋 プレイヤー退出: ${leftContent.user_name} がルームから退出\n` +
-          `🏠 ルーム状態: ${leftContent.room.state}, プレイヤー数: ${leftContent.room.players.length}`
+            `🏠 ルーム状態: ${leftContent.room.state}, プレイヤー数: ${leftContent.room.players.length}`
         );
         break;
 
@@ -272,7 +272,7 @@ export class WebSocketManager {
 
       case WS_EVENTS.ROOM_CLOSED:
         const roomClosedContent = wsEvent.content as RoomClosedEventContent;
-        this.addMessage(`🔒 ルームクローズ: ${roomClosedContent.message || 'Room has been closed'}`);
+        this.addMessage(`🔒 ルームクローズ: ${roomClosedContent.message || "Room has been closed"}`);
         break;
 
       case WS_EVENTS.GAME_STARTED:
@@ -394,6 +394,22 @@ export class WebSocketManager {
   getMaxReconnectAttempts(): number {
     return this.maxReconnectAttempts;
   }
+
+  // イベントハンドラーの設定/追加
+  setMessageHandler(handler: (event: WebSocketEvent) => void): void {
+    this.onMessage = handler;
+  }
+
+  // 既存のイベントハンドラーと新しいハンドラーを組み合わせる
+  addMessageHandler(handler: (event: WebSocketEvent) => void): void {
+    const existingHandler = this.onMessage;
+    this.onMessage = (event: WebSocketEvent) => {
+      if (existingHandler) {
+        existingHandler(event);
+      }
+      handler(event);
+    };
+  }
 }
 
 // WebSocket接続用のComposable関数
@@ -416,5 +432,7 @@ export function useWebSocket(wsUrl: string, onMessage?: (event: WebSocketEvent) 
     destroy: () => manager.destroy(),
     getReconnectAttempts: () => manager.getReconnectAttempts(),
     getMaxReconnectAttempts: () => manager.getMaxReconnectAttempts(),
+    setMessageHandler: (handler: (event: WebSocketEvent) => void) => manager.setMessageHandler(handler),
+    addMessageHandler: (handler: (event: WebSocketEvent) => void) => manager.addMessageHandler(handler),
   };
 }

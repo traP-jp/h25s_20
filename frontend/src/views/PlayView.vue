@@ -36,14 +36,6 @@
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import {
-  type WebSocketEvent,
-  type BoardUpdateEventContent,
-  type CountdownEventContent,
-  type GameEndEventContent,
-  type RoomStateEventContent,
-  WS_EVENTS,
-} from "@/lib/websocket";
 import { useWebSocketStore, useGameResultStore, useRoomPlayersStore, useCurrentRoomStore } from "@/store";
 import TopBar from "@/components/playgame/TopBar.vue";
 import type { Room } from "@/lib/types";
@@ -75,88 +67,6 @@ const gameTime = ref(60); // 初期時間60秒
 const gameStarted = ref(false);
 const countdown = ref(-1); // -1 means hide the countdown screen
 
-// WebSocketイベントハンドラー
-function handleWebSocketEvent(event: WebSocketEvent) {
-  console.log("PlayView受信イベント:", event);
-
-  switch (event.event) {
-    case WS_EVENTS.BOARD_UPDATED:
-      const boardEvent = event.content as BoardUpdateEventContent;
-      if (boardEvent.board) {
-        board.value = boardEvent.board.content;
-        if (boardEvent.user_id === getCurrentUserId()) {
-          // 自分のスコア更新
-          gameScore.value += boardEvent.gain_score;
-        }
-        // 他プレイヤーのスコア更新処理も実装可能
-      }
-      break;
-
-    case WS_EVENTS.COUNTDOWN_START:
-      const countdownStartEvent = event.content as CountdownEventContent;
-      if (countdownStartEvent.countdown !== undefined) {
-        startCountdown(countdownStartEvent.countdown);
-      }
-      break;
-
-    case WS_EVENTS.COUNTDOWN:
-      const countdownEvent = event.content as CountdownEventContent;
-      if (countdownEvent.count !== undefined) {
-        countdown.value = countdownEvent.count;
-      }
-      break;
-
-    case WS_EVENTS.ROOM_STATE_CHANGED:
-      const roomStateEvent = event.content as RoomStateEventContent;
-      if (roomStateEvent.players) {
-        console.log("Updated players:", roomStateEvent.players);
-        roomPlayersStore.updatePlayers(roomStateEvent.players);
-      }
-      break;
-
-    case WS_EVENTS.PLAYER_READY:
-      const readyEvent = event.content as import("@/lib/websocket").PlayerEventContent;
-      if (readyEvent.user_id) {
-        roomPlayersStore.setPlayerReady(readyEvent.user_id.toString(), true);
-      }
-      break;
-
-    case WS_EVENTS.PLAYER_CANCELED:
-      const canceledEvent = event.content as import("@/lib/websocket").PlayerEventContent;
-      if (canceledEvent.user_id) {
-        roomPlayersStore.setPlayerReady(canceledEvent.user_id.toString(), false);
-      }
-      break;
-
-    case WS_EVENTS.PLAYER_ALL_READY:
-      const allReadyEvent = event.content as import("@/lib/websocket").PlayerEventContent;
-      console.log("全プレイヤー準備完了:", allReadyEvent);
-      // 全プレイヤーが準備完了した場合の処理
-      for (const player of roomPlayersStore.players) {
-        roomPlayersStore.setPlayerReady(player.name, true);
-      }
-      showStartModal.value = false;
-      break;
-
-    case WS_EVENTS.GAME_STARTED:
-      gameStarted.value = true;
-      countdown.value = -1;
-      startGameTimer();
-      break;
-
-    case WS_EVENTS.GAME_ENDED:
-      const gameEndedEvent = event.content as GameEndEventContent;
-      gameStarted.value = false;
-      stopGameTimer();
-
-      // 最終スコアデータがある場合はストアを更新
-      if (gameEndedEvent.final_scores) {
-        gameResultStore.updatePlayers(gameEndedEvent.final_scores);
-      }
-      break;
-  }
-}
-
 // 現在のユーザーIDを取得（仮実装）
 function getCurrentUserId(): number {
   // 実際の実装では認証情報から取得
@@ -183,15 +93,6 @@ function stopGameTimer() {
     clearInterval(gameTimer);
     gameTimer = null;
   }
-}
-
-// カウントダウン開始
-async function startCountdown(startNum: number) {
-  for (let i = startNum; i > 0; i--) {
-    countdown.value = i;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  countdown.value = -1;
 }
 
 // 盤面更新をサーバーに送信
@@ -262,17 +163,6 @@ onMounted(() => {
 
   // グローバルWebSocketストアに現在のコンポーネントのイベントハンドラーを設定
   // 既存のWebSocket接続がない場合は、ローカルストレージからユーザー名を取得して接続
-  if (!webSocketStore.getWebSocketManager()) {
-    const storedUsername = localStorage.getItem("username");
-    if (storedUsername) {
-      console.log("WebSocket接続が存在しないため、新しく接続します:", storedUsername);
-      webSocketStore.initializeWebSocket(storedUsername, handleWebSocketEvent);
-    }
-  } else {
-    console.log("既存のWebSocket接続を使用します");
-    // 既存の接続があっても、このコンポーネント用のイベントハンドラーを設定
-    // TODO: 複数のイベントハンドラーをサポートするよう改善が必要
-  }
 });
 
 onBeforeUnmount(() => {

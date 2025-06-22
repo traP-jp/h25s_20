@@ -1,25 +1,26 @@
 <template>
   <div :class="$style.container">
-    <button :class="$style.mainBtn" @click="onClickMain" :disabled="isBtnDisabled">
+    <button
+      :class="$style.mainBtn"
+      @click="onClickMain"
+      :disabled="isBtnDisabled"
+      v-show="!isLeader || !allPlayersReady"
+    >
       {{ BtnMsg }}
     </button>
-    {{ isLeader }}
-    {{ allPlayersReady }}
-    {{ isBtnDisabled }}
     <!-- リーダーかつ全プレイヤーが準備完了の場合にゲーム開始ボタンを表示 -->
-    <button v-show="isLeader && allPlayersReady && !isBtnDisabled" :class="$style.startBtn" @click="onClickStart">
-      ゲーム開始
-    </button>
+    <button v-show="isLeader && allPlayersReady" :class="$style.startBtn" @click="onClickStart">ゲーム開始</button>
     <button v-show="!isBtnDisabled" :class="$style.quitBtn" @click="onClickQuit">部屋から抜ける</button>
     <button v-show="isBtnDisabled" :class="$style.cancelBtn" @click="onClickCancel">キャンセル</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, computed, defineModel } from "vue";
+import { ref, computed, defineModel, onMounted, onUnmounted } from "vue";
 import { useRouter } from "vue-router";
 import { useCurrentRoomStore, useRoomPlayersStore, useWebSocketStore } from "@/store";
 import { apiClient } from "@/api";
+import { WS_EVENTS, type WebSocketEvent } from "@/lib/websocket";
 
 const showResultModal = defineModel<boolean>("showResultModal");
 const currentRoomStore = useCurrentRoomStore();
@@ -41,6 +42,31 @@ const isLeader = computed(() => {
 const allPlayersReady = computed(() => {
   const players = roomPlayersStore.players;
   return players.length > 0 && players.every((player) => player.isReady);
+});
+
+// WebSocketイベントハンドラー
+const handleWebSocketEvent = (event: WebSocketEvent) => {
+  if (event.event === WS_EVENTS.PLAYER_ALL_READY) {
+    // 全プレイヤーのisReadyをtrueに設定
+    roomPlayersStore.players.forEach((player) => {
+      player.isReady = true;
+    });
+    console.log("All players are ready - updated store");
+  }
+};
+
+// WebSocketイベントリスナーの設定
+onMounted(() => {
+  // 既存のWebSocket接続にイベントハンドラーを追加
+  if (webSocketStore.wsManager) {
+    webSocketStore.wsManager.addMessageHandler(handleWebSocketEvent);
+    console.log("Added PLAYER_ALL_READY event handler to existing WebSocket connection");
+  }
+});
+
+onUnmounted(() => {
+  // コンポーネントが破棄される際の処理
+  // 他のコンポーネントが使用している可能性があるため、WebSocket自体は切断しない
 });
 
 const onClickMain = async () => {
@@ -169,7 +195,7 @@ const onClickStart = async () => {
 
 .startBtn {
   border: 1px solid red;
-  background-color: #4caf50;
+  /* background-color: #4caf50; */
   color: white;
   border: none;
   padding: 15px 30px;
@@ -181,7 +207,7 @@ const onClickStart = async () => {
 }
 
 .startBtn:hover {
-  background-color: #45a049;
+  /* background-color: #45a049; */
 }
 
 .quitBtn {
