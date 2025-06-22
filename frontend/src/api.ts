@@ -85,7 +85,36 @@ export class ApiClient {
 
   // User management
   async createUser(userData: UserData): Promise<ApiResponse> {
-    return this.makeRequest("POST", "/users", userData);
+    try {
+      const config: any = {
+        method: "POST",
+        url: `${this.baseUrl}/users`,
+        data: userData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+      };
+
+      const response: AxiosResponse = await axios(config);
+
+      // レスポンスボディからtokenを取得して設定
+      if (response.data && response.data.token) {
+        this.setAuthToken(response.data.token);
+      }
+
+      return {
+        success: true,
+        status: response.status,
+        data: response.data,
+      };
+    } catch (error) {
+      const axiosError = error as AxiosError;
+      return {
+        success: false,
+        status: axiosError.response?.status || 0,
+        data: (axiosError.response?.data || axiosError.message) as any,
+      };
+    }
   }
 
   // Rooms
