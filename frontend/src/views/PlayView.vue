@@ -79,12 +79,12 @@ function getCurrentUserId(): number {
     }
 
     // JWTトークンをデコード（セキュアではないが、ペイロード部分のみを読み取り）
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    
+    const payload = JSON.parse(atob(token.split(".")[1]));
+
     if (payload.user_id) {
       return Number(payload.user_id);
     }
-    
+
     console.warn("トークンにuser_idが含まれていません");
     return 0;
   } catch (error) {
@@ -188,6 +188,58 @@ onMounted(() => {
     console.log("PlayView received WebSocket event:", event);
 
     switch (event.event) {
+      case WS_EVENTS.PLAYER_JOINED:
+        console.log("Player joined event received:", event.content);
+        if (event.content && typeof event.content === "object" && "room" in event.content) {
+          const roomContent = event.content as any;
+          if (roomContent.room && roomContent.room.players) {
+            // ルームプレイヤーストアを更新
+            const roomPlayers = roomContent.room.players.map((player: any) => ({
+              user_id: player.id,
+              user_name: player.user_name,
+              is_ready: player.is_ready,
+            }));
+            roomPlayersStore.updatePlayers(roomPlayers);
+            console.log("Updated room players after PLAYER_JOINED:", roomPlayers);
+          }
+        }
+        break;
+
+      case WS_EVENTS.PLAYER_READY:
+        console.log("Player ready event received:", event.content);
+        if (event.content && typeof event.content === "object" && "user_id" in event.content) {
+          const playerContent = event.content as any;
+          roomPlayersStore.setPlayerReady(playerContent.user_id.toString(), true);
+          console.log(`Player ${playerContent.user_name} is now ready`);
+        }
+        break;
+
+      case WS_EVENTS.PLAYER_CANCELED:
+        console.log("Player canceled event received:", event.content);
+        if (event.content && typeof event.content === "object" && "user_id" in event.content) {
+          const playerContent = event.content as any;
+          roomPlayersStore.setPlayerReady(playerContent.user_id.toString(), false);
+          console.log(`Player ${playerContent.user_name} canceled ready state`);
+        }
+        break;
+
+      case WS_EVENTS.PLAYER_LEFT:
+        console.log("Player left event received:", event.content);
+        if (event.content && typeof event.content === "object" && "room" in event.content) {
+          const roomContent = event.content as any;
+          if (roomContent.room && roomContent.room.players) {
+            // ルームプレイヤーストアを更新
+            const roomPlayers = roomContent.room.players.map((player: any) => ({
+              user_id: player.id,
+              user_name: player.user_name,
+              is_ready: player.is_ready,
+            }));
+            roomPlayersStore.updatePlayers(roomPlayers);
+            console.log("Updated room players after PLAYER_LEFT:", roomPlayers);
+          }
+        }
+        break;
+
       case WS_EVENTS.COUNTDOWN_START:
         console.log("Countdown start event received");
         break;
