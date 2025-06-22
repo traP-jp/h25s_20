@@ -11,7 +11,13 @@
       />
     </div>
 
-    <MyInfo icon="/images/player-self.png" name="Me" :score="50" :time="'10:00'" :class="$style.myinfo" />
+    <MyInfo
+      icon="/images/player-self.png"
+      name="Me"
+      :score="50"
+      :time="'10:00'"
+      :class="$style.myinfo"
+    />
 
     <div :class="$style.board">
       <MainGameBoard v-model:board="board" />
@@ -27,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, provide } from "vue";
+import { ref, watch, provide } from "vue";
 import { roomData } from "@/lib/sample-data";
 
 import type { Room } from "@/lib/types.ts";
@@ -39,8 +45,6 @@ import MyInfo from "@/components/playgame/MyInfo.vue";
 import OverlayModal from "@/components/OverlayModal.vue";
 import StartModal from "@/components/playgame/start/StartModal.vue";
 import ResultModal from "@/components/playgame/result/ResultModal.vue";
-
-import { ref, watch } from "vue";
 
 const players = [
   { icon: "/images/player1.png", name: "Player 01", score: 30 },
@@ -54,15 +58,14 @@ function handleRoomClick(room: Room) {
 const showStartModal = ref(false);
 const showResultModal = ref(false);
 
-provide('showStartModal', showStartModal);
-provide('showResultModal', showResultModal);
+provide("showStartModal", showStartModal);
+provide("showResultModal", showResultModal);
 
 const board = ref([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8]);
 
 watch(board, (newBoard) => {
   console.log("Board updated:", newBoard);
 });
-
 </script>
 
 <style module>
@@ -96,7 +99,6 @@ watch(board, (newBoard) => {
   border: 1px solid var(--border-color, #ccc);
   text-align: left;
   z-index: 1010;
-
 }
 
 .userinfo {
