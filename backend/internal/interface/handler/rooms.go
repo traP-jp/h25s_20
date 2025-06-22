@@ -319,9 +319,9 @@ func (h *Handler) handleGameStart(roomID int) {
 
 	// 3秒のカウントダウン
 	for i := 3; i > 0; i-- {
-		time.Sleep(1 * time.Second)
 		if h.WebSocketHandler != nil {
 			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
+			time.Sleep(1 * time.Second)
 		}
 	}
 
@@ -380,7 +380,6 @@ func (h *Handler) handleGameTimer(roomID int) {
 
 	// 10秒のカウントダウン
 	for i := 10; i > 0; i-- {
-		time.Sleep(1 * time.Second)
 
 		// 各秒でゲームがまだ進行中かチェック
 		room, err := h.roomUsecase.GetRoomByID(roomID)
@@ -391,6 +390,8 @@ func (h *Handler) handleGameTimer(roomID int) {
 		if h.WebSocketHandler != nil {
 			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
 		}
+
+		time.Sleep(1 * time.Second)
 	}
 
 	// タイマー終了、ゲームを終了する
