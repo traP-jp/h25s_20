@@ -31,7 +31,7 @@
     <TopBar :room="currentRoom" />
     <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
     <button @click="debugStartCountdown(3)">Debug Countdown</button>
-    <CountDown v-if="countdown >= 0" :time="countdown" />
+    <CountDown v-if="countdown > 0" :time="countdown" />
   </div>
 </template>
 
@@ -211,15 +211,21 @@ onMounted(() => {
             gameScore.value += boardContent.gain_score;
             console.log("Score updated:", gameScore.value);
           }
-          version.value++;
+          version.value = boardContent.board.version;
         }
         break;
 
       case WS_EVENTS.GAME_ENDED:
         console.log("Game ended event received");
+        countdown.value = 0;
         gameStarted.value = false;
         stopGameTimer();
         showResultModal.value = true;
+
+        // 全てのプレイヤーの isReady を false に設定
+        for (const player of roomPlayersStore.players) {
+          player.isReady = false;
+        }
         break;
     }
   };
