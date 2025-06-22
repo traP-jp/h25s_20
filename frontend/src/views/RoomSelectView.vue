@@ -10,11 +10,13 @@
 
 <script setup lang="ts">
 import { ref, onMounted } from "vue";
+import { useRouter } from "vue-router";
 import { apiClient } from "@/api";
 import RoomButton from "@/components/RoomButton.vue";
 import type { Room } from "@/lib/types";
 
 const roomData = ref<Room[]>([]);
+const router = useRouter();
 
 async function fetchRooms() {
   try {
@@ -30,8 +32,23 @@ async function fetchRooms() {
   }
 }
 
-function handleRoomClick(room: Room) {
-  console.log("Room clicked:", room);
+async function handleRoomClick(room: Room) {
+  try {
+    console.log("Joining room:", room);
+    const response = await apiClient.performRoomAction(room.roomId, { action: "JOIN" });
+
+    if (response.success) {
+      console.log("Successfully joined room:", room.roomId);
+      // ルームに参加成功後、PlayViewに遷移
+      router.push(`/play/${room.roomId}`);
+    } else {
+      console.error("Failed to join room:", response.data);
+      alert("ルームへの参加に失敗しました");
+    }
+  } catch (error) {
+    console.error("Error joining room:", error);
+    alert("ルームへの参加中にエラーが発生しました");
+  }
 }
 
 onMounted(() => {
