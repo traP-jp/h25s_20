@@ -12,6 +12,9 @@ const (
 	EventPlayerLeft     = "player_left"
 	EventPlayerAllReady = "player_all_ready"
 
+	// ルーム関連
+	EventRoomClosed = "room_closed"
+
 	// ゲーム関連
 	EventGameStarted    = "game_started"
 	EventGameStart      = "game_start"
@@ -275,6 +278,18 @@ func NewGameEndEvent(roomID int, message string) WebSocketEvent {
 func NewPlayerAllReadyEvent(roomID int, message string) WebSocketEvent {
 	return WebSocketEvent{
 		Event: EventPlayerAllReady,
+		Content: PlayerEventContent{
+			BaseEventContent: BaseEventContent{
+				RoomID:  roomID,
+				Message: message,
+			},
+		},
+	}
+}
+
+func NewRoomClosedEvent(roomID int, message string) WebSocketEvent {
+	return WebSocketEvent{
+		Event: EventRoomClosed,
 		Content: PlayerEventContent{
 			BaseEventContent: BaseEventContent{
 				RoomID:  roomID,

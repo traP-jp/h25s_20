@@ -244,3 +244,8 @@ func (h *WebSocketHandler) SendPlayerAllReadyEventToRoom(roomID int, message str
 	event := wsManager.NewPlayerAllReadyEvent(roomID, message)
 	h.manager.SendEventToRoom(roomID, event)
 }
+
+func (h *WebSocketHandler) SendRoomClosedEventToRoom(roomID int, message string) {
+	event := wsManager.NewRoomClosedEvent(roomID, message)
+	h.manager.SendEventToRoom(roomID, event)
+}

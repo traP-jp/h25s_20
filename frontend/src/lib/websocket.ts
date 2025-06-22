@@ -78,6 +78,8 @@ export interface RoomStateEventContent extends BaseEventContent {
   }>;
 }
 
+export interface RoomClosedEventContent extends BaseEventContent {}
+
 export type EventContent =
   | ConnectionEventContent
   | PlayerEventContent
@@ -87,6 +89,7 @@ export type EventContent =
   | CountdownEventContent
   | GameEndEventContent
   | RoomStateEventContent
+  | RoomClosedEventContent
   | BaseEventContent;
 
 // WebSocketイベント名の定数
@@ -98,6 +101,7 @@ export const WS_EVENTS = {
   PLAYER_ALL_READY: "player_all_ready",
   PLAYER_LEFT: "player_left",
   ROOM_STATE_CHANGED: "room_state_changed",
+  ROOM_CLOSED: "room_closed",
   GAME_STARTED: "game_started",
   GAME_START: "game_start",
   COUNTDOWN_START: "countdown_start",
@@ -264,6 +268,11 @@ export class WebSocketManager {
         this.addMessage(
           `🏠 部屋状態変更: ${roomStateContent.state}, プレイヤー数: ${roomStateContent.players?.length || 0}`
         );
+        break;
+
+      case WS_EVENTS.ROOM_CLOSED:
+        const roomClosedContent = wsEvent.content as RoomClosedEventContent;
+        this.addMessage(`🔒 ルームクローズ: ${roomClosedContent.message || 'Room has been closed'}`);
         break;
 
       case WS_EVENTS.GAME_STARTED:

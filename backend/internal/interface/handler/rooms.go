@@ -94,6 +94,10 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		// 全員準備完了チェック
 		if updatedRoom.AreAllPlayersReady() && len(updatedRoom.Players) > 0 {
 			h.WebSocketHandler.SendPlayerAllReadyEventToRoom(roomId, "All players are ready!")
+			// ルームがクローズされたことを通知
+			if !updatedRoom.IsOpened {
+				h.WebSocketHandler.SendRoomClosedEventToRoom(roomId, "Room is now closed")
+			}
 		}
 
 		return c.NoContent(http.StatusNoContent)

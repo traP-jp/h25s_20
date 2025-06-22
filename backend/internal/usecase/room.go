@@ -29,9 +29,6 @@ func NewRoomUsecase() *RoomUsecase {
 func (r *RoomUsecase) initializeRooms() {
 	for i := 1; i <= 10; i++ {
 		room := domain.NewRoom(i, fmt.Sprintf("Room %d", i))
-		if i%2 == 0 { // 偶数のroomはクローズ
-			room.IsOpened = false
-		}
 		r.rooms[i] = room
 	}
 }
@@ -123,6 +120,8 @@ func (r *RoomUsecase) UpdatePlayerReadyStatus(roomID int, playerID int, isReady 
 	// 全員がREADYになったら状態を更新
 	if room.AreAllPlayersReady() && room.State == domain.StateWaitingForPlayers {
 		room.TransitionTo(domain.StateAllReady)
+		// 全員がreadyになったらroomをクローズ
+		room.IsOpened = false
 	} else if !room.AreAllPlayersReady() && room.State == domain.StateAllReady {
 		room.TransitionTo(domain.StateWaitingForPlayers)
 	}
