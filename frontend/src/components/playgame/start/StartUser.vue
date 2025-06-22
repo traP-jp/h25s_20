@@ -1,6 +1,6 @@
 <template>
   <div :class="$style.container">
-    <UserIcon :id="props.name" :size="40" />
+    <ReadyIcon :id="props.name" :size="40" :isReady="props.isReady" />
     <span>{{ props.name }}</span>
     <StartBadge :gold="props.gold" :silver="props.silver" :bronze="props.bronze" />
   </div>
@@ -8,13 +8,14 @@
 <script setup lang="ts">
 import { ref } from "vue";
 import StartBadge from "@/components/playgame/start/StartBadge.vue";
-import UserIcon from "@/components/UserIcon.vue";
+import ReadyIcon from "@/components/ReadyIcon.vue";
 
 const props = defineProps<{
   name: string;
   gold: number;
   silver: number;
   bronze: number;
+  isReady: boolean;
 }>();
 
 </script>
