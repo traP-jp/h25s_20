@@ -48,7 +48,7 @@ func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
 	// WebSocket接続をアップグレード（CORS対応のオプション追加）
 	conn, err := websocket.Accept(c.Response().Writer, c.Request(), &websocket.AcceptOptions{
 		Subprotocols:   []string{"echo"},
-		OriginPatterns: []string{"http://localhost:5173"},
+		OriginPatterns: []string{"localhost:5173"},
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to upgrade WebSocket connection")
