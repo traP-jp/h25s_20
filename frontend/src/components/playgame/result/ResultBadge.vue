@@ -1,6 +1,8 @@
 <template>
 
-  <span :class="$style.rank">{{ props.rank }}</span>
+  <span :class="$style.rank">
+    <img :src="`/icons/${props.rank}.svg`" :alt="'Rank ' + props.rank" />
+  </span>
 
 </template>
 
@@ -14,16 +16,9 @@
 
   <style module>
 
-  .rank {
-    display: inline-block;
-    background-color: blue;
-    color: white;
-    border-radius: 50%;
-    width: 2em;
-    height: 2em;
-    line-height: 2em;
-    text-align: center;
-    font-weight: bold;
+  .rank img {
+    width: 30px;
+    height: 30px;
   }
 
   </style>

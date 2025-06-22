@@ -1,6 +1,6 @@
 <template>
   <div :class="$style.container">
-    <StartBadge :rank="props.rank"/>
+    <ResultBadge :rank="props.rank"/>
     <UserIcon :id="props.name" :size="40" />
     <span>{{ props.name }}</span>
     <span>{{ props.score }}点</span>
