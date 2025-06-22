@@ -79,11 +79,12 @@ const playerScores = ref<Map<number, { name: string; score: number }>>(new Map()
 // 現在のユーザーIDを取得
 function getCurrentUserId(): number {
   try {
-    const token = localStorage.getItem("authToken");
+    const token = sessionStorage.getItem("authToken");
     if (!token) {
       console.warn("認証トークンが見つかりません");
       return 0;
     }
+    console.log(JSON.parse(atob(token.split(".")[1])));
 
     // JWTトークンをデコード（セキュアではないが、ペイロード部分のみを読み取り）
     const payload = JSON.parse(atob(token.split(".")[1]));
@@ -278,16 +279,6 @@ onMounted(() => {
               score: 0,
             });
           }
-        }
-
-        // 現在のユーザーも確実に追加
-        const currentUserId = getCurrentUserId();
-        if (currentUserId && !playerScores.value.has(currentUserId)) {
-          const currentPlayer = roomPlayersStore.players.find((p) => parseInt(p.id) === currentUserId);
-          playerScores.value.set(currentUserId, {
-            name: currentPlayer?.name || `Player ${currentUserId}`,
-            score: 0,
-          });
         }
 
         console.log("Initialized player scores:", playerScores.value);
