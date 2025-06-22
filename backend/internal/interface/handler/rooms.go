@@ -321,8 +321,8 @@ func (h *Handler) handleGameStart(roomID int) {
 	for i := 3; i > 0; i-- {
 		if h.WebSocketHandler != nil {
 			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
-			time.Sleep(1 * time.Second)
 		}
+		time.Sleep(1 * time.Second)
 	}
 
 	// カウントダウン完了後、ゲームを実際に開始
