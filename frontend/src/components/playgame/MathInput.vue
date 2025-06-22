@@ -42,13 +42,51 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import MathInputButton from "./MathInputButton.vue";
 import { defineModel, watch } from "vue";
 import { checkMath } from "@/lib/board-update";
 
 const expression = ref("");
 const board = defineModel<number[]>("board");
+
+const handleKeydown = (event: KeyboardEvent) => {
+  // 数字キー (1-9)
+  if (/^[1-9]$/.test(event.key)) {
+    addSymbol(event.key);
+    event.preventDefault();
+    return;
+  }
+
+  // 演算子キー
+  if (/^[+\-*/]$/.test(event.key)) {
+    addSymbol(event.key);
+    event.preventDefault();
+    return;
+  }
+
+  // 括弧キー
+  if (event.key === '(' || event.key === ')') {
+    addParentheses();
+    event.preventDefault();
+    return;
+  }
+
+  // バックスペースキー
+  if (event.key === 'Backspace') {
+    backspace();
+    event.preventDefault();
+    return;
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown);
+});
 
 watch(expression, (newValue) => {
   if (!board.value) return;
