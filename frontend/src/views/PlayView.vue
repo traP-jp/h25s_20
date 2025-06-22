@@ -1,6 +1,6 @@
 <template>
   <div :class="$style.container">
-    <div :class="$style.header">Play View: Room{{ roomData[0].name }}</div>
+    <TopBar v-model:room="roomData[0]" />
     <div :class="$style.userinfo">
       <OpponentInfo
         v-for="player in players"
@@ -11,13 +11,7 @@
       />
     </div>
 
-    <MyInfo
-      icon="/images/player-self.png"
-      name="Me"
-      :score="50"
-      :time="'10:00'"
-      :class="$style.myinfo"
-    />
+    <ScoreInfo icon="/images/player-self.png" name="Me" :score="50" :time="'10:00'" :class="$style.myinfo" />
 
     <div :class="$style.board">
       <MainGameBoard v-model:board="board" />
@@ -35,14 +29,12 @@
 <script setup lang="ts">
 import { ref, watch, provide } from "vue";
 import { roomData } from "@/lib/sample-data";
-
-import type { Room } from "@/lib/types.ts";
+import TopBar from "@/components/playgame/TopBar.vue";
 
 import OpponentInfo from "@/components/playgame/OpponentInfo.vue";
 import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
 import MathInput from "@/components/playgame/MathInput.vue";
 import MyInfo from "@/components/playgame/MyInfo.vue";
-import OverlayModal from "@/components/OverlayModal.vue";
 import StartModal from "@/components/playgame/start/StartModal.vue";
 import ResultModal from "@/components/playgame/result/ResultModal.vue";
 
@@ -50,10 +42,6 @@ const players = [
   { icon: "/images/player1.png", name: "Player 01", score: 30 },
   { icon: "/images/player2.png", name: "Player 02", score: 50 },
 ];
-
-function handleRoomClick(room: Room) {
-  console.log("Room clicked:", room);
-}
 
 const showStartModal = ref(false);
 const showResultModal = ref(false);
@@ -70,10 +58,9 @@ watch(board, (newBoard) => {
 
 <style module>
 .container {
-  width: 500px;
+  width: 360px;
   height: 100vh;
   margin: 0 auto;
-  padding: 20px;
   border: 1px solid var(--border-color, #ccc);
   display: flex;
   flex-direction: column;
