@@ -58,7 +58,7 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	wsHandler := handler.NewWebSocketHandler(wsManagerInstance, roomUsecase, userUsecase)
 
 	// WebSocket endpoint (outside of API group to avoid OpenAPI validation)
-	e.GET("/ws", wsHandler.HandleWebSocket)
+	e.GET("/api/ws", wsHandler.HandleWebSocket)
 
 	// Setup API routes
 	api := e.Group("/api")
