@@ -130,6 +130,8 @@ func (r *RoomUsecase) UpdatePlayerReadyStatus(roomID int, playerID int, isReady 
 		room.IsOpened = false
 	} else if !room.AreAllPlayersReady() && room.State == domain.StateAllReady {
 		room.TransitionTo(domain.StateWaitingForPlayers)
+		// 状態がWaitingForPlayersに戻った場合、部屋を再度開放
+		room.IsOpened = true
 	}
 
 	return room, nil
@@ -238,10 +240,13 @@ func (r *RoomUsecase) RemovePlayerFromRoom(roomID int, playerID int) (*domain.Ro
 		// ゲームボードもリセット
 		room.GameBoards = []domain.GameBoard{domain.NewBoard()}
 		room.ResultLog = []domain.Result{}
+		room.IsOpened = true // ルームを再度開放
 	} else {
 		// まだプレイヤーがいる場合、READY状態をチェック
 		if !room.AreAllPlayersReady() && room.State == domain.StateAllReady {
 			room.TransitionTo(domain.StateWaitingForPlayers)
+			// 状態がWaitingForPlayersに戻った場合、部屋を再度開放
+			room.IsOpened = true
 		}
 	}
 
@@ -443,6 +448,8 @@ func (r *RoomUsecase) RemoveDisconnectedPlayer(roomID int, playerID int) (*domai
 		// まだプレイヤーがいる場合、READY状態をチェック（接続中のプレイヤーのみ）
 		if !r.areConnectedPlayersReady(room) && room.State == domain.StateAllReady {
 			room.TransitionTo(domain.StateWaitingForPlayers)
+			// 状態がWaitingForPlayersに戻った場合、部屋を再度開放
+			room.IsOpened = true
 		}
 	}
 
