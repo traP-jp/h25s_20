@@ -3,23 +3,45 @@
     <button :class="$style.mainBtn" @click="onClickMain" :disabled="isBtnDisabled">
       {{ BtnMsg }}
     </button>
+    {{ isLeader }}
+    {{ allPlayersReady }}
+    {{ isBtnDisabled }}
+    <!-- リーダーかつ全プレイヤーが準備完了の場合にゲーム開始ボタンを表示 -->
+    <button v-show="isLeader && allPlayersReady && !isBtnDisabled" :class="$style.startBtn" @click="onClickStart">
+      ゲーム開始
+    </button>
     <button v-show="!isBtnDisabled" :class="$style.quitBtn" @click="onClickQuit">部屋から抜ける</button>
     <button v-show="isBtnDisabled" :class="$style.cancelBtn" @click="onClickCancel">キャンセル</button>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, defineModel } from "vue";
+import { ref, computed, defineModel } from "vue";
 import { useRouter } from "vue-router";
-import { useCurrentRoomStore } from "@/store";
+import { useCurrentRoomStore, useRoomPlayersStore, useWebSocketStore } from "@/store";
 import { apiClient } from "@/api";
 
 const showResultModal = defineModel<boolean>("showResultModal");
 const currentRoomStore = useCurrentRoomStore();
+const roomPlayersStore = useRoomPlayersStore();
+const webSocketStore = useWebSocketStore();
 const router = useRouter();
 
 const BtnMsg = ref("準備OK!");
 const isBtnDisabled = ref(false);
+
+// 現在のユーザーがリーダー（プレイヤーリストの先頭）かどうかを判定
+const isLeader = computed(() => {
+  const players = roomPlayersStore.players;
+  const currentUsername = webSocketStore.currentUsername;
+  return players.length > 0 && players[0].name === currentUsername;
+});
+
+// 全プレイヤーが準備完了かどうかを判定
+const allPlayersReady = computed(() => {
+  const players = roomPlayersStore.players;
+  return players.length > 0 && players.every((player) => player.isReady);
+});
 
 const onClickMain = async () => {
   const room = currentRoomStore.getCurrentRoom();
@@ -99,6 +121,30 @@ const onClickCancel = async () => {
     alert("キャンセルの送信中にエラーが発生しました");
   }
 };
+
+const onClickStart = async () => {
+  const room = currentRoomStore.getCurrentRoom();
+  if (!room) {
+    console.error("No current room found");
+    return;
+  }
+
+  try {
+    // STARTアクションをバックエンドに送信
+    const response = await apiClient.performRoomAction(room.roomId, { action: "START" });
+
+    if (response.success) {
+      console.log("Successfully started the game");
+      // ゲーム開始後の処理は WebSocket イベントで処理される想定
+    } else {
+      console.error("Failed to start game:", response.data);
+      alert("ゲーム開始の送信に失敗しました");
+    }
+  } catch (error) {
+    console.error("Error starting game:", error);
+    alert("ゲーム開始の送信中にエラーが発生しました");
+  }
+};
 </script>
 
 <style module>
@@ -119,6 +165,23 @@ const onClickCancel = async () => {
 .mainBtn {
   transform: scale(1.5);
   margin: 20px 0;
+}
+
+.startBtn {
+  border: 1px solid red;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  padding: 15px 30px;
+  font-size: 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  margin: 10px 0;
+  transform: scale(1.2);
+}
+
+.startBtn:hover {
+  background-color: #45a049;
 }
 
 .quitBtn {

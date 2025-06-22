@@ -109,6 +109,7 @@ function handleWebSocketEvent(event: WebSocketEvent) {
     case WS_EVENTS.ROOM_STATE_CHANGED:
       const roomStateEvent = event.content as RoomStateEventContent;
       if (roomStateEvent.players) {
+        console.log("Updated players:", roomStateEvent.players);
         roomPlayersStore.updatePlayers(roomStateEvent.players);
       }
       break;
@@ -125,6 +126,16 @@ function handleWebSocketEvent(event: WebSocketEvent) {
       if (canceledEvent.user_id) {
         roomPlayersStore.setPlayerReady(canceledEvent.user_id.toString(), false);
       }
+      break;
+
+    case WS_EVENTS.PLAYER_ALL_READY:
+      const allReadyEvent = event.content as import("@/lib/websocket").PlayerEventContent;
+      console.log("全プレイヤー準備完了:", allReadyEvent);
+      // 全プレイヤーが準備完了した場合の処理
+      for (const player of roomPlayersStore.players) {
+        roomPlayersStore.setPlayerReady(player.name, true);
+      }
+      showStartModal.value = false;
       break;
 
     case WS_EVENTS.GAME_STARTED:
@@ -242,8 +253,8 @@ onMounted(() => {
   if (room?.users && room.users.length > 0) {
     // Room型のusersをroomPlayersStoreが期待する形式に変換
     const roomPlayers = room.users.map((user) => ({
-      user_id: parseInt(user.id),
-      user_name: user.id, // Room型ではnameがないため、idをnameとして使用
+      user_id: 0,
+      user_name: user.username, // Room型ではnameがないため、idをnameとして使用
       is_ready: user.isReady,
     }));
     roomPlayersStore.updatePlayers(roomPlayers);
