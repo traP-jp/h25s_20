@@ -4,9 +4,9 @@
     <div :class="$style.main">
       <div :class="$style.statistics">
         <TextMark text="score" bgColor="#ffdd44" />
-        <div :class="$style.score">30</div>
+        <div :class="$style.score">{{ gameScore }}</div>
         <TextMark text="time" bgColor="#ff4400" />
-        <div :class="$style.time">01:00</div>
+        <div :class="$style.time">{{ formatTime(gameTime) }}</div>
       </div>
       <div :class="$style.right">
         <TextMark text="players" bgColor="#bb0000" :class="$style.playerMark" />
@@ -23,16 +23,27 @@
 
     <StartModal />
     <ResultModal />
-    <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
-    <button @click="debugStartCountdown(3)">Debug Countdown</button>
+    <!-- Debug controls for WebSocket -->
+    <div style="position: fixed; bottom: 10px; left: 10px; display: flex; gap: 10px; flex-wrap: wrap;">
+      <button @click="debugStartGame" style="padding: 5px 10px; font-size: 12px;">
+        Debug Start Game
+      </button>
+      <button @click="debugUpdateBoard" style="padding: 5px 10px; font-size: 12px;">
+        Debug Update Board
+      </button>
+      <button @click="debugStartCountdown(3)" style="padding: 5px 10px; font-size: 12px;">
+        Debug Countdown
+      </button>
+    </div>
     <CountDown v-if="countdown >= 0" :time="countdown" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, provide, onMounted } from "vue";
+import { ref, watch, provide, onMounted, onBeforeUnmount } from "vue";
 import { useRoute } from "vue-router";
 import { roomData } from "@/lib/sample-data";
+import { useWebSocket, type WebSocketEvent, type BoardUpdateEventContent, type CountdownEventContent, WS_EVENTS } from "@/lib/websocket";
 import TopBar from "@/components/playgame/TopBar.vue";
 import type { Room } from "@/lib/types";
 
@@ -48,6 +59,118 @@ import TextMark from "@/components/TextMark.vue";
 // ルーターから情報を取得
 const route = useRoute();
 const currentRoom = ref<Room | null>(null);
+
+// WebSocket通信の初期化
+const wsUrl = ref<string>("");
+let wsManager: ReturnType<typeof useWebSocket> | null = null;
+
+// ゲーム状態
+const gameScore = ref(0);
+const gameTime = ref(60); // 初期時間60秒
+const gameStarted = ref(false);
+const countdown = ref(-1); // -1 means hide the countdown screen
+
+// WebSocketイベントハンドラー
+function handleWebSocketEvent(event: WebSocketEvent) {
+  console.log("PlayView受信イベント:", event);
+  
+  switch (event.event) {
+    case WS_EVENTS.BOARD_UPDATED:
+      const boardEvent = event.content as BoardUpdateEventContent;
+      if (boardEvent.board) {
+        board.value = boardEvent.board.content;
+        if (boardEvent.user_id === getCurrentUserId()) {
+          // 自分のスコア更新
+          gameScore.value += boardEvent.gain_score;
+        }
+        // 他プレイヤーのスコア更新処理も実装可能
+      }
+      break;
+      
+    case WS_EVENTS.COUNTDOWN_START:
+      const countdownStartEvent = event.content as CountdownEventContent;
+      if (countdownStartEvent.countdown !== undefined) {
+        startCountdown(countdownStartEvent.countdown);
+      }
+      break;
+      
+    case WS_EVENTS.COUNTDOWN:
+      const countdownEvent = event.content as CountdownEventContent;
+      if (countdownEvent.count !== undefined) {
+        countdown.value = countdownEvent.count;
+      }
+      break;
+      
+    case WS_EVENTS.GAME_STARTED:
+      gameStarted.value = true;
+      countdown.value = -1;
+      startGameTimer();
+      break;
+      
+    case WS_EVENTS.GAME_ENDED:
+      gameStarted.value = false;
+      stopGameTimer();
+      break;
+  }
+}
+
+// 現在のユーザーIDを取得（仮実装）
+function getCurrentUserId(): number {
+  // 実際の実装では認証情報から取得
+  return 1;
+}
+
+// ゲームタイマー管理
+let gameTimer: number | null = null;
+
+function startGameTimer() {
+  if (gameTimer) return;
+  
+  gameTimer = setInterval(() => {
+    if (gameTime.value > 0) {
+      gameTime.value--;
+    } else {
+      stopGameTimer();
+    }
+  }, 1000);
+}
+
+function stopGameTimer() {
+  if (gameTimer) {
+    clearInterval(gameTimer);
+    gameTimer = null;
+  }
+}
+
+// カウントダウン開始
+async function startCountdown(startNum: number) {
+  for (let i = startNum; i > 0; i--) {
+    countdown.value = i;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  countdown.value = -1;
+}
+
+// 盤面更新をサーバーに送信
+function sendBoardUpdate(newBoard: number[], gainScore: number) {
+  if (!wsManager || !wsManager.isConnected.value || !currentRoom.value) return;
+  
+  const boardUpdateEvent = {
+    event: 'board_update',
+    content: {
+      room_id: currentRoom.value.roomId,
+      user_id: getCurrentUserId(),
+      board: {
+        content: newBoard,
+        version: Date.now(), // 簡易的なバージョン管理
+        size: 16
+      },
+      gain_score: gainScore
+    }
+  };
+  
+  wsManager.send(boardUpdateEvent);
+}
 
 // ルーターから渡された情報を取得
 onMounted(() => {
@@ -71,6 +194,29 @@ onMounted(() => {
   }
 
   console.log("Current room:", currentRoom.value);
+  
+  // WebSocket接続の初期化
+  if (currentRoom.value) {
+    const username = "debug_user"; // 実際の実装では認証情報から取得
+    wsUrl.value = `ws://localhost:8080/ws?username=${username}&room_id=${currentRoom.value.roomId}`;
+    // WebSocketマネージャーを再初期化
+    initializeWebSocket();
+  }
+});
+
+// WebSocket接続を初期化
+function initializeWebSocket() {
+  if (wsUrl.value) {
+    wsManager = useWebSocket(wsUrl.value, handleWebSocketEvent);
+    wsManager.connect();
+  }
+}
+
+onBeforeUnmount(() => {
+  stopGameTimer();
+  if (wsManager) {
+    wsManager.destroy();
+  }
 });
 
 // 初期盤面を生成する関数
@@ -98,21 +244,65 @@ const players = [
 
 const showStartModal = ref(false);
 const showResultModal = ref(false);
-const countdown = ref(-1); // -1 means hide the countdown screen
 
 provide("showStartModal", showStartModal);
 provide("showResultModal", showResultModal);
 
-// デバック用 実際はwebsocketのコールバックからカウントダウンの更新をする
+// 盤面の変更を監視してWebSocketで送信
+watch(board, (newBoard: number[], oldBoard: number[]) => {
+  console.log("Board updated:", newBoard);
+  
+  // ゲームが開始されていて、実際に盤面が変更された場合のみ送信
+  if (gameStarted.value && oldBoard && JSON.stringify(newBoard) !== JSON.stringify(oldBoard)) {
+    // スコア計算（簡易実装）
+    const gainScore = calculateScoreGain(newBoard, oldBoard);
+    sendBoardUpdate(newBoard, gainScore);
+  }
+});
+
+// スコア計算（簡易実装）
+function calculateScoreGain(newBoard: number[], oldBoard: number[]): number {
+  // 実際のゲームロジックに応じてスコアを計算
+  // ここでは例として、変更された数の数をスコアとする
+  let changes = 0;
+  for (let i = 0; i < newBoard.length; i++) {
+    if (newBoard[i] !== oldBoard[i]) {
+      changes++;
+    }
+  }
+  return changes * 10; // 変更1つあたり10点
+}
+
+// 時間をMM:SS形式でフォーマット
+function formatTime(seconds: number): string {
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`;
+}
+
+// デバッグ関数
+function debugStartGame() {
+  gameStarted.value = true;
+  gameTime.value = 60;
+  startGameTimer();
+  console.log("Debug: Game started");
+}
+
+function debugUpdateBoard() {
+  // 盤面をランダムに更新
+  board.value = generateInitialBoard();
+  console.log("Debug: Board updated");
+}
+
+// デバッグ用カウントダウン
 async function debugStartCountdown(startNum: number) {
   for (let i = startNum; i > 0; i--) {
     countdown.value = i;
     await new Promise((resolve) => setTimeout(resolve, 1000));
   }
   countdown.value = -1;
+  debugStartGame(); // カウントダウン後にゲーム開始
 }
-
-watch(board, (newBoard: number[]) => console.log("Board updated:", newBoard));
 </script>
 
 <style module>
