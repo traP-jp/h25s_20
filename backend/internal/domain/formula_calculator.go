@@ -8,139 +8,119 @@ import (
 	"strings"
 )
 
-// FormulaCalculator は安全な数式計算システム
-type FormulaCalculator struct{}
-
-// NewFormulaCalculator creates a new formula calculator
-func NewFormulaCalculator() *FormulaCalculator {
-	return &FormulaCalculator{}
+// FormulaCalculator は逆ポーランド記法専用の安全な数式計算システム
+type FormulaCalculator struct {
+	// 正規表現を事前にコンパイルしてパフォーマンス向上
+	validCharsRe *regexp.Regexp
+	digitRe      *regexp.Regexp
+	operatorRe   *regexp.Regexp
 }
 
-// EvaluateFormula は数式を安全に評価し、結果が10かどうかを確認
+// NewFormulaCalculator creates a new RPN-only formula calculator
+func NewFormulaCalculator() *FormulaCalculator {
+	return &FormulaCalculator{
+		validCharsRe: regexp.MustCompile(`^[123456789+\-*/]*$`),
+		digitRe:      regexp.MustCompile(`[1-9]`),
+		operatorRe:   regexp.MustCompile(`^[+\-*/]$`),
+	}
+}
+
+// EvaluateFormula は逆ポーランド記法の数式を安全に評価し、結果が10かどうかを確認
+// solvePoland.tsと同じ仕様で実装
 func (fc *FormulaCalculator) EvaluateFormula(expression string) (float64, error) {
-	// 入力をサニタイズ
+	// 入力をサニタイズ（空白除去）
 	expression = strings.ReplaceAll(expression, " ", "")
 
-	// 基本的な文字チェック
-	if !regexp.MustCompile(`^[0-9+\-*/()]*$`).MatchString(expression) {
-		return 0, fmt.Errorf("式に無効な文字が含まれています")
+	// solvePoland.tsと同じバリデーション
+	// 1. 長さチェック（7文字固定）
+	if len(expression) != 7 {
+		return 0, fmt.Errorf("Invalid input")
 	}
 
-	// 数字の数をチェック（1-9の数字が4つ必要）
-	numbers := regexp.MustCompile(`[1-9]`).FindAllString(expression, -1)
+	// 2. 使用可能文字チェック（1-9と四則演算子のみ）
+	if !fc.validCharsRe.MatchString(expression) {
+		return 0, fmt.Errorf("Invalid input")
+	}
+
+	// 3. 数字の数をチェック（4つ必要）
+	numbers := fc.digitRe.FindAllString(expression, -1)
 	if len(numbers) != 4 {
-		return 0, fmt.Errorf("数式には1-9の数字が4つ必要です")
+		return 0, fmt.Errorf("Invalid input")
 	}
 
-	// 逆ポーランド記法に変換
-	rpn, err := fc.convertToRPN(expression)
-	if err != nil {
-		return 0, fmt.Errorf("数式の変換に失敗しました: %w", err)
+	// 4. RPNパターンチェック（solvePoland.tsと同じ）
+	if !fc.isValidRPNPattern(expression) {
+		return 0, fmt.Errorf("Invalid input")
 	}
 
-	// 逆ポーランド記法で計算
-	result, err := fc.calculateRPN(rpn)
+	// 5. RPN計算実行
+	result, err := fc.calculateRPN(expression)
 	if err != nil {
-		return 0, fmt.Errorf("計算に失敗しました: %w", err)
+		return 0, fmt.Errorf("Invalid input")
 	}
 
 	return result, nil
 }
 
-// convertToRPN は中置記法を逆ポーランド記法に変換
-func (fc *FormulaCalculator) convertToRPN(expression string) ([]string, error) {
-	var output []string
-	var operators []string
-
-	// 演算子の優先順位
-	precedence := map[string]int{
-		"+": 1,
-		"-": 1,
-		"*": 2,
-		"/": 2,
-	}
-
-	isOperator := func(token string) bool {
-		_, exists := precedence[token]
-		return exists
-	}
-
-	i := 0
-	for i < len(expression) {
-		char := string(expression[i])
-
-		if regexp.MustCompile(`\d`).MatchString(char) {
-			// 数字をまとめて読み取る
-			num := char
-			for i+1 < len(expression) && regexp.MustCompile(`\d`).MatchString(string(expression[i+1])) {
-				i++
-				num += string(expression[i])
-			}
-			output = append(output, num)
-		} else if char == "(" {
-			operators = append(operators, char)
-		} else if char == ")" {
-			// '(' が出てくるまで演算子を出力
-			for len(operators) > 0 && operators[len(operators)-1] != "(" {
-				output = append(output, operators[len(operators)-1])
-				operators = operators[:len(operators)-1]
-			}
-			if len(operators) == 0 || operators[len(operators)-1] != "(" {
-				return nil, fmt.Errorf("括弧が不正です")
-			}
-			operators = operators[:len(operators)-1] // '(' を取り除く
-		} else if isOperator(char) {
-			for len(operators) > 0 &&
-				isOperator(operators[len(operators)-1]) &&
-				precedence[operators[len(operators)-1]] >= precedence[char] {
-				output = append(output, operators[len(operators)-1])
-				operators = operators[:len(operators)-1]
-			}
-			operators = append(operators, char)
+// isValidRPNPattern はRPNパターンが有効かチェック（solvePoland.tsと同じ）
+func (fc *FormulaCalculator) isValidRPNPattern(expression string) bool {
+	// 文字を 'x'（数字）と 'o'（演算子）にマッピング
+	pattern := ""
+	for _, char := range expression {
+		if fc.digitRe.MatchString(string(char)) {
+			pattern += "x"
+		} else if fc.operatorRe.MatchString(string(char)) {
+			pattern += "o"
 		} else {
-			return nil, fmt.Errorf("無効なトークン: %s", char)
+			return false
 		}
-
-		i++
 	}
 
-	// 残っている演算子をすべて出力
-	for len(operators) > 0 {
-		op := operators[len(operators)-1]
-		if op == "(" || op == ")" {
-			return nil, fmt.Errorf("括弧が不正です")
-		}
-		output = append(output, op)
-		operators = operators[:len(operators)-1]
+	// 有効なRPNパターン（solvePoland.tsと同じ）
+	validPatterns := []string{
+		"xxxxooo", // 1234+*-
+		"xxxoxoo", // 123+4*-
+		"xxxooxo", // 123++4-
+		"xxoxxoo", // 12+34*-
+		"xxoxoxo", // 12+3+4-
 	}
 
-	return output, nil
+	for _, validPattern := range validPatterns {
+		if pattern == validPattern {
+			return true
+		}
+	}
+
+	return false
 }
 
-// calculateRPN は逆ポーランド記法で計算
-func (fc *FormulaCalculator) calculateRPN(tokens []string) (float64, error) {
+// calculateRPN は逆ポーランド記法で計算（solvePoland.tsのcalc_polandと同じ）
+func (fc *FormulaCalculator) calculateRPN(expression string) (float64, error) {
 	var stack []float64
 
-	for _, token := range tokens {
-		if regexp.MustCompile(`^\d+$`).MatchString(token) {
-			// 数字
-			num, err := strconv.ParseFloat(token, 64)
+	for _, char := range expression {
+		charStr := string(char)
+
+		if fc.digitRe.MatchString(charStr) {
+			// 数字をスタックにプッシュ
+			num, err := strconv.ParseFloat(charStr, 64)
 			if err != nil {
 				return 0, fmt.Errorf("数字の変換に失敗: %w", err)
 			}
 			stack = append(stack, num)
-		} else {
-			// 演算子
+		} else if fc.operatorRe.MatchString(charStr) {
+			// 演算子処理
 			if len(stack) < 2 {
-				return 0, fmt.Errorf("不正な逆ポーランド記法")
+				return 0, fmt.Errorf("Invalid RPN")
 			}
 
+			// スタックから2つの値を取得（順序注意：solvePoland.tsと同じ）
 			second := stack[len(stack)-1]
 			first := stack[len(stack)-2]
 			stack = stack[:len(stack)-2]
 
 			var result float64
-			switch token {
+			switch charStr {
 			case "+":
 				result = first + second
 			case "-":
@@ -153,7 +133,7 @@ func (fc *FormulaCalculator) calculateRPN(tokens []string) (float64, error) {
 				}
 				result = first / second
 			default:
-				return 0, fmt.Errorf("無効な演算子: %s", token)
+				return 0, fmt.Errorf("無効な演算子: %s", charStr)
 			}
 
 			stack = append(stack, result)
@@ -170,8 +150,7 @@ func (fc *FormulaCalculator) calculateRPN(tokens []string) (float64, error) {
 // ValidateFormulaNumbers は数式で使用される数字を抽出・検証
 func (fc *FormulaCalculator) ValidateFormulaNumbers(expression string) ([]int, error) {
 	// 数字を抽出（1-9のみ）
-	re := regexp.MustCompile(`[1-9]`)
-	numberStrings := re.FindAllString(expression, -1)
+	numberStrings := fc.digitRe.FindAllString(expression, -1)
 
 	if len(numberStrings) != 4 {
 		return nil, fmt.Errorf("数式には1-9の数字が4つ必要です")
@@ -198,27 +177,18 @@ func (fc *FormulaCalculator) CheckTarget10(result float64) bool {
 	return math.Abs(result-10) < epsilon
 }
 
-// IsValidFormulaPattern は数式パターンが有効かチェック
-func (fc *FormulaCalculator) IsValidFormulaPattern(expression string) bool {
-	// 基本的な構造チェック
-	if len(expression) == 0 {
-		return false
-	}
-
-	// 括弧のバランスチェック
-	balance := 0
-	for _, char := range expression {
-		if char == '(' {
-			balance++
-		} else if char == ')' {
-			balance--
+// CheckResultType は結果の種類を判定（solvePoland.tsと同じロジック）
+func (fc *FormulaCalculator) CheckResultType(result float64) string {
+	resultInt := int(math.Round(result))
+	if math.Abs(result-float64(resultInt)) < 1e-9 {
+		if resultInt == 10 {
+			return "10"
+		} else {
+			return "Not 10"
 		}
-		if balance < 0 {
-			return false
-		}
+	} else {
+		return "Not an integer"
 	}
-
-	return balance == 0
 }
 
 // GetInvalidCombinations は10が作れない数字の組み合わせを返す
@@ -231,6 +201,37 @@ func (fc *FormulaCalculator) GetInvalidCombinations() []string {
 		"5788", "5799", "5899", "6666", "6667", "6677", "6777", "6778", "6888", "6899",
 		"6999", "7777", "7788", "7789", "7799", "7888", "7999", "8899",
 	}
+}
+
+// IsImpossibleCombination は不可能な数字の組み合わせかチェック
+func (fc *FormulaCalculator) IsImpossibleCombination(numbers []int) bool {
+	if len(numbers) != 4 {
+		return false
+	}
+
+	// 数字をソートして文字列に変換
+	sorted := make([]int, len(numbers))
+	copy(sorted, numbers)
+
+	// 簡単なソート（バブルソート）
+	for i := 0; i < len(sorted)-1; i++ {
+		for j := 0; j < len(sorted)-i-1; j++ {
+			if sorted[j] > sorted[j+1] {
+				sorted[j], sorted[j+1] = sorted[j+1], sorted[j]
+			}
+		}
+	}
+
+	combination := fmt.Sprintf("%d%d%d%d", sorted[0], sorted[1], sorted[2], sorted[3])
+
+	invalid := fc.GetInvalidCombinations()
+	for _, inv := range invalid {
+		if combination == inv {
+			return true
+		}
+	}
+
+	return false
 }
 
 // IsImpossibleCombination は不可能な数字の組み合わせかチェック
