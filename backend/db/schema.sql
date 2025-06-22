@@ -8,5 +8,5 @@ CREATE TABLE IF NOT EXISTS score (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     _value INT NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
+    CONSTRAINT fk_score_user_id FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE
 );
