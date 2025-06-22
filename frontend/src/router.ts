@@ -23,6 +23,11 @@ const router = createRouter({
       component: () => import("@/views/PlayView.vue"),
       meta: { showLayout: true },
     },
+    {
+      path: "/:pathMatch(.*)*",
+      component: () => import("@/views/NotFoundView.vue"),
+      meta: { showLayout: false },
+    },
   ],
 });
 
