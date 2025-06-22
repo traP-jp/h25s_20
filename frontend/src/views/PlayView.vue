@@ -1,22 +1,23 @@
 <template>
   <div :class="$style.container">
     <TopBar v-model:room="roomData[0]" />
-    <div :class="$style.userinfo">
-      <OpponentInfo
-        v-for="player in players"
-        :key="player.name"
-        :icon="player.icon"
-        :name="player.name"
-        :score="player.score"
-      />
+    <div :class="$style.main">
+      <div :class="$style.left">
+        <div :class="$style.statistics">
+          <TextMark text="score" bgColor="#ffdd44" />
+          <div :class="$style.score">30</div>
+          <TextMark text="time" bgColor="#ff4400" />
+          <div :class="$style.time">01:00</div>
+        </div>
+        <div :class="$style.board">
+          <MainGameBoard v-model:board="board" />
+        </div>
+      </div>
+      <div :class="$style.right">
+        <TextMark text="players" bgColor="#bb0000" />
+        <OpponentInfo v-for="player in players" :key="player.name" :id="player.name" :score="player.score" />
+      </div>
     </div>
-
-    <ScoreInfo icon="/images/player-self.png" name="Me" :score="50" :time="'10:00'" :class="$style.myinfo" />
-
-    <div :class="$style.board">
-      <MainGameBoard v-model:board="board" />
-    </div>
-
     <div :class="$style.inputbox">
       <MathInput v-model:board="board" />
     </div>
@@ -37,6 +38,7 @@ import MathInput from "@/components/playgame/MathInput.vue";
 import MyInfo from "@/components/playgame/MyInfo.vue";
 import StartModal from "@/components/playgame/start/StartModal.vue";
 import ResultModal from "@/components/playgame/result/ResultModal.vue";
+import TextMark from "@/components/TextMark.vue";
 
 const players = [
   { icon: "/images/player1.png", name: "Player 01", score: 30 },
@@ -80,18 +82,43 @@ watch(board, (newBoard) => {
   gap: 10px;
 }
 
-.myinfo {
+.right {
+  margin-left: 30px;
+  margin-top: 20px;
+  width: 100%;
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--border-color, #ccc);
-  text-align: left;
-  z-index: 1010;
+  align-items: center;
 }
 
-.userinfo {
+.main {
+  margin-top: 40px;
+  position: relative;
   display: flex;
-  flex-direction: column;
-  margin-bottom: 20px;
-  border: 1px solid var(--border-color, #ccc);
+  flex-direction: row;
+  justify-content: space-between;
+}
+
+.left {
+  width: 260px;
+}
+
+.statistics {
+  margin-top: 14px;
+  height: 60px;
+  gap: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+}
+
+.score {
+  font-size: 40px;
+  font-weight: bold;
+}
+
+.time {
+  font-size: 20px;
+  font-weight: bold;
 }
 </style>

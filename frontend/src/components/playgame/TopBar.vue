@@ -4,7 +4,7 @@
       <UserIcon :class="$style.myIcon" :id="`me`" :size="40" />
       <div :class="$style.myName">{{ "me" }}</div>
       <div :class="$style.right">
-        <div :class="$style.roomName">{{ room?.name || "" }}</div>
+        <TextMark :text="room?.name || ''" :bgColor="`#008800`" />
         <img src="/logo.svg" alt="Logo" :class="$style.logo" />
       </div>
     </div>
@@ -15,6 +15,7 @@
 import { defineModel } from "vue";
 import type { Room } from "@/lib/types.ts";
 import UserIcon from "@/components/UserIcon.vue";
+import TextMark from "@/components/TextMark.vue";
 const room = defineModel<Room>("room");
 </script>
 
@@ -58,15 +59,6 @@ const room = defineModel<Room>("room");
   height: 100%;
   display: flex;
   align-items: center;
-}
-
-.roomName {
-  background-color: #008800;
-  color: white;
-  padding: 0 10px;
-  border-radius: 1em;
-  font-weight: bold;
-  font-size: 12px;
 }
 
 .logo {
