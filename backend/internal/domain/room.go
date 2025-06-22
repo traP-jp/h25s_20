@@ -112,16 +112,25 @@ func AttemptMoveWithVersion(gb *GameBoard, expression string, submittedVersion i
 		return false, conflictMsg, 0
 	}
 
-	// 新しい安全な計算システムを使用
+	// 新しいRPN専用計算システムを使用
 	calculator := NewFormulaCalculator()
 	evalResult, err := calculator.EvaluateFormula(expression)
 	if err != nil {
-		return false, fmt.Sprintf("エラー: %s", err.Error()), 0
+		return false, fmt.Sprintf("エラー: 無効な数式です (%s)", err.Error()), 0
 	}
 
 	// 結果が10かどうかをチェック
 	if !calculator.CheckTarget10(evalResult) {
-		return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %.6f)", evalResult), 0
+		// solvePoland.tsと同じ形式でより詳細な結果を返す
+		resultType := calculator.CheckResultType(evalResult)
+		switch resultType {
+		case "Not an integer":
+			return false, "エラー: 計算結果が整数になりません。", 0
+		case "Not 10":
+			return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %.0f)", evalResult), 0
+		default:
+			return false, fmt.Sprintf("エラー: 計算結果が10になりません。(結果: %.6f)", evalResult), 0
+		}
 	}
 
 	// 検証をクリアしたら盤面を更新（新仕様）
