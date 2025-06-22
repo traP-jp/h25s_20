@@ -9,7 +9,12 @@
       </div>
       <div :class="$style.right">
         <TextMark text="players" bgColor="#bb0000" :class="$style.playerMark" />
-        <OpponentInfo v-for="player in players" :key="player.name" :id="player.name" :score="player.score" />
+        <OpponentInfo
+          v-for="player in Array.from(playerScores.values()).sort((a, b) => b.score - a.score)"
+          :key="player.name"
+          :id="player.name"
+          :score="player.score"
+        />
       </div>
     </div>
     <div :class="$style.board">
@@ -64,7 +69,6 @@ const roomPlayersStore = useRoomPlayersStore();
 const currentRoomStore = useCurrentRoomStore();
 
 // ゲーム状態
-const gameScore = ref(0);
 const gameTime = ref(60); // 初期時間60秒
 const gameStarted = ref(false);
 const countdown = ref(-1); // -1 means hide the countdown screen
@@ -275,6 +279,17 @@ onMounted(() => {
             });
           }
         }
+
+        // 現在のユーザーも確実に追加
+        const currentUserId = getCurrentUserId();
+        if (currentUserId && !playerScores.value.has(currentUserId)) {
+          const currentPlayer = roomPlayersStore.players.find((p) => parseInt(p.id) === currentUserId);
+          playerScores.value.set(currentUserId, {
+            name: currentPlayer?.name || `Player ${currentUserId}`,
+            score: 0,
+          });
+        }
+
         console.log("Initialized player scores:", playerScores.value);
 
         // ボード情報があれば更新
@@ -300,12 +315,6 @@ onMounted(() => {
             const userId = boardContent.user_id;
             const gainScore = boardContent.gain_score;
 
-            // 自分のスコアを更新
-            if (userId === getCurrentUserId()) {
-              gameScore.value += gainScore;
-              console.log("Score updated (own submission):", gameScore.value, "gained:", gainScore);
-            }
-
             // 全プレイヤーのスコアマップを更新
             if (playerScores.value.has(userId)) {
               const playerData = playerScores.value.get(userId)!;
@@ -319,6 +328,11 @@ onMounted(() => {
               });
               console.log(`Added new player ${boardContent.user_name} with score: ${gainScore}`);
               console.log("Current player scores:", playerScores.value);
+            }
+
+            // 自分のスコア更新ログ
+            if (userId === getCurrentUserId()) {
+              console.log("Score updated (own submission):", gameScore.value, "gained:", gainScore);
             }
           }
 
@@ -388,12 +402,6 @@ function generateInitialBoard(): number[] {
 
 const board = ref(generateInitialBoard());
 
-// プレイヤー情報（後でWebSocketから取得する予定）
-const players = [
-  { icon: "/images/player1.png", name: "Player 01", score: 30 },
-  { icon: "/images/player2.png", name: "Player 02", score: 50 },
-];
-
 const showStartModal = ref(true);
 const showResultModal = ref(false);
 const currentRoom = ref<Room | null>(null);
@@ -422,6 +430,14 @@ function calculateScoreGain(newBoard: number[], oldBoard: number[]): number {
   }
   return changes * 10; // 変更1つあたり10点
 }
+
+// 現在のユーザーのスコアを playerScores から取得
+const gameScore = computed(() => {
+  const currentUserId = getCurrentUserId();
+  console.log("Current user ID:", currentUserId);
+  const playerData = playerScores.value.get(currentUserId);
+  return playerData ? playerData.score : 0;
+});
 
 // 時間をMM:SS形式でフォーマット
 function formatTime(seconds: number): string {
