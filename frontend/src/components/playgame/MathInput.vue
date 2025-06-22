@@ -57,6 +57,7 @@ import { checkMath } from "@/lib/board-update";
 
 const expression = ref("");
 const board = defineModel<number[]>("board");
+const currentExpression = defineModel<string>("currentExpression");
 
 const handleKeydown = (event: KeyboardEvent) => {
   // 数字キー (1-9)
@@ -108,6 +109,11 @@ watch(expression, (newValue) => {
   const result = checkMath(board.value, newValue);
   board.value = result["board"];
   expression.value = result["input"];
+
+  // 親コンポーネントに現在の数式を伝達
+  if (currentExpression) {
+    currentExpression.value = newValue;
+  }
 });
 
 const viewExpression = computed(() => {
