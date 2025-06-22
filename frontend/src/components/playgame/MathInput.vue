@@ -1,7 +1,7 @@
 <template>
   <div :class="$style.wrapper">
     <!-- プレビュー -->
-    <div :class="[$style.preview]">
+    <div :class="$style.preview">
       {{ expression }}
     </div>
 
@@ -132,8 +132,8 @@ const backspace = () => {
 .preview {
   letter-spacing: 5px;
   border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
+  padding: 5px;
+  margin-bottom: 5px;
   font-size: 30px;
   font-weight: 500;
   text-align: center;
@@ -145,7 +145,7 @@ const backspace = () => {
 }
 
 .container {
-  margin: 30px auto 0 auto;
+  margin: 0 auto;
   width: 300px;
   display: flex;
   justify-content: space-between;
