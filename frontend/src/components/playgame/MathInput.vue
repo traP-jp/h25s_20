@@ -2,7 +2,7 @@
   <div :class="$style.wrapper">
     <!-- プレビュー -->
     <div :class="$style.preview">
-      {{ expression }}
+      {{ viewExpression }}
     </div>
 
     <div :class="$style.container">
@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import MathInputButton from "./MathInputButton.vue";
 import { defineModel, watch } from "vue";
 import { checkMath } from "@/lib/board-update";
@@ -55,6 +55,10 @@ watch(expression, (newValue) => {
   const result = checkMath(board.value, newValue);
   board.value = result["board"];
   expression.value = result["input"];
+});
+
+const viewExpression = computed(() => {
+  return expression.value.replace("-", "−").replace("*", "×").replace("/", "÷");
 });
 
 const addSymbol = (value: string) => {
