@@ -7,8 +7,7 @@ const props = withDefaults(
   defineProps<{
     id?: string;
     size?: number;
-    borderColor?: string;
-    borderWidth?: string;
+    border?: string;
     isReady: boolean;
   }>(),
   {
@@ -26,12 +25,14 @@ console.log(props.isReady);
     :id="props.id"
     :size="props.size"
     :style="{
-      borderColor: props.borderColor || 'transparent',
-      borderWidth: props.borderWidth || '0px',
+      // borderColor: props.borderColor || 'transparent',
+      // borderWidth: props.borderWidth || '0px',
+      border: props.border || '0px solid transparent'
     }"
     :class="$style.userIcon"
     />
-    <Icon v-show="props.isReady" :icon="'fe:check'" :class="$style.checkIcon" />
+    <Icon v-show="props.isReady" :icon="'fe:check'" :class="$style.checkIcon" :style="{border: props.border || '0px solid transparent'}" />
+
   </div>
 </template>
 
@@ -49,7 +50,7 @@ console.log(props.isReady);
   position: absolute;
   top: 0;
   left: 0;
-  transform: translate(120%, 120%); /* 左上に微調整 */
+  transform: translate(105%, 105%); /* 左上に微調整 */
   font-size: 1rem; /* サイズ調整 */
   background: white; /* 必要なら背景色を追加 */
   border-radius: 50%; /* 丸くしたい場合 */
