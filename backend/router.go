@@ -52,7 +52,7 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	authService := auth.NewAuthService(jwtService, userUsecase)
 	roomUsecase := usecase.NewRoomUsecase()
 	wsManagerInstance := wsManager.NewManager()
-	wsHandler := handler.NewWebSocketHandler(wsManagerInstance, roomUsecase)
+	wsHandler := handler.NewWebSocketHandler(wsManagerInstance, roomUsecase, userUsecase)
 
 	// WebSocket endpoint (outside of API group to avoid OpenAPI validation)
 	e.GET("/ws", wsHandler.HandleWebSocket)

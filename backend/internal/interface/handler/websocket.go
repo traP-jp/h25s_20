@@ -2,7 +2,6 @@ package handler
 
 import (
 	"context"
-	"strconv"
 	"time"
 
 	"github.com/coder/websocket"
@@ -16,26 +15,31 @@ import (
 type WebSocketHandler struct {
 	manager     *wsManager.Manager
 	roomUsecase *usecase.RoomUsecase
+	userUsecase *usecase.UserUsecase
 }
 
-func NewWebSocketHandler(manager *wsManager.Manager, roomUsecase *usecase.RoomUsecase) *WebSocketHandler {
+func NewWebSocketHandler(manager *wsManager.Manager, roomUsecase *usecase.RoomUsecase, userUsecase *usecase.UserUsecase) *WebSocketHandler {
 	return &WebSocketHandler{
 		manager:     manager,
 		roomUsecase: roomUsecase,
+		userUsecase: userUsecase,
 	}
 }
 
 func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
-	// ユーザーIDをクエリパラメータから取得
-	userIDStr := c.QueryParam("user_id")
-	if userIDStr == "" {
-		return c.JSON(400, map[string]string{"error": "user_id is required"})
+	// ユーザー名をクエリパラメータから取得
+	username := c.QueryParam("username")
+	if username == "" {
+		return c.JSON(400, map[string]string{"error": "username is required"})
 	}
 
-	userID, err := strconv.Atoi(userIDStr)
+	// データベースからユーザーを検索
+	user, err := h.userUsecase.GetUserByUsername(c.Request().Context(), username)
 	if err != nil {
-		return c.JSON(400, map[string]string{"error": "invalid user_id"})
+		return c.JSON(404, map[string]string{"error": "user not found"})
 	}
+
+	userID := int(user.ID)
 
 	// WebSocket接続をアップグレード
 	conn, err := websocket.Accept(c.Response().Writer, c.Request(), &websocket.AcceptOptions{
