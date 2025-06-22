@@ -85,7 +85,7 @@ func (h *WebSocketHandler) handleConnection(ctx context.Context, conn *websocket
 			return
 		default:
 			// タイムアウト付きでメッセージを読み取り（主にpingフレーム用）
-			ctx, cancel := context.WithTimeout(ctx, 30*time.Second)
+			ctx, cancel := context.WithTimeout(ctx, 300*time.Second)
 			_, _, err := conn.Read(ctx)
 			cancel()
 
