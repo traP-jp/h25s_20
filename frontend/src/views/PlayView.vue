@@ -16,7 +16,6 @@
     <div :class="$style.board">
       <MainGameBoard v-model:board="board" />
     </div>
-    <MathInput v-model:board="board" />
 
     <div :class="$style.inputbox">
       <MathInput v-model:board="board" />
