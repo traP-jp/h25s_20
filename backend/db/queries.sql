@@ -23,7 +23,7 @@ SELECT id FROM user WHERE username = ?;
 SELECT * FROM user WHERE username = ?;
 
 -- name: CreateScore :execresult
-INSERT INTO score (user_id,value) VALUES(?,?);
+INSERT INTO score (user_id,_value) VALUES(?,?);
 
 -- name: GetTop10Scores :many
-SELECT user.username,score.value FROM score JOIN user ON score.user_id = user.id ORDER BY value DESC limit 10;
+SELECT user.username,score._value FROM score JOIN user ON score.user_id = user.id ORDER BY value DESC limit 10;

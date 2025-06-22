@@ -11,12 +11,12 @@ import (
 )
 
 const CreateScore = `-- name: CreateScore :execresult
-INSERT INTO score (user_id,value) VALUES(?,?)
+INSERT INTO score (user_id,_value) VALUES(?,?)
 `
 
 type CreateScoreParams struct {
 	UserID int32 `json:"user_id"`
-	Value  int32 `json:"value"`
+	Value  int32 `json:"_value"`
 }
 
 func (q *Queries) CreateScore(ctx context.Context, arg CreateScoreParams) (sql.Result, error) {
@@ -54,12 +54,12 @@ func (q *Queries) DeleteUser(ctx context.Context, id int32) error {
 }
 
 const GetTop10Scores = `-- name: GetTop10Scores :many
-SELECT user.username,score.value FROM score JOIN user ON score.user_id = user.id ORDER BY value DESC limit 10
+SELECT user.username,score._value FROM score JOIN user ON score.user_id = user.id ORDER BY value DESC limit 10
 `
 
 type GetTop10ScoresRow struct {
 	Username string `json:"username"`
-	Value    int32  `json:"value"`
+	Value    int32  `json:"_value"`
 }
 
 func (q *Queries) GetTop10Scores(ctx context.Context) ([]GetTop10ScoresRow, error) {
