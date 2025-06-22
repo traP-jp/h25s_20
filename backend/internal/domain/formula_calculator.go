@@ -233,34 +233,3 @@ func (fc *FormulaCalculator) IsImpossibleCombination(numbers []int) bool {
 
 	return false
 }
-
-// IsImpossibleCombination は不可能な数字の組み合わせかチェック
-func (fc *FormulaCalculator) IsImpossibleCombination(numbers []int) bool {
-	if len(numbers) != 4 {
-		return false
-	}
-
-	// 数字をソートして文字列に変換
-	sorted := make([]int, len(numbers))
-	copy(sorted, numbers)
-
-	// 简単なソート（バブルソート）
-	for i := 0; i < len(sorted)-1; i++ {
-		for j := 0; j < len(sorted)-i-1; j++ {
-			if sorted[j] > sorted[j+1] {
-				sorted[j], sorted[j+1] = sorted[j+1], sorted[j]
-			}
-		}
-	}
-
-	combination := fmt.Sprintf("%d%d%d%d", sorted[0], sorted[1], sorted[2], sorted[3])
-
-	invalid := fc.GetInvalidCombinations()
-	for _, inv := range invalid {
-		if combination == inv {
-			return true
-		}
-	}
-
-	return false
-}
