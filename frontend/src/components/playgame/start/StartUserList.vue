@@ -1,17 +1,9 @@
 <template>
   <div :class="$style.container">
-    <StartUser
-      v-for="player in roomPlayersStore.players"
-      :key="player.id"
-      :id="player.id"
-      :name="player.name"
-      :gold="player.gold"
-      :silver="player.silver"
-      :bronze="player.bronze"
-      :isReady="player.isReady"
-    />
+    <StartUser v-for="player in roomPlayersStore.players" :player="player" />
   </div>
 </template>
+
 <script setup lang="ts">
 import StartUser from "@/components/playgame/start/StartUser.vue";
 import { useRoomPlayersStore } from "@/store";

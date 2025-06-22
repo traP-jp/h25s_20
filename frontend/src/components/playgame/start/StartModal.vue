@@ -4,7 +4,6 @@
     <StartUserList :class="$style.userList" />
     <StartControl v-model:showStartModal="showStartModal" />
   </OverlayModal>
-  <button @click="showStartModal = true">startモーダルのテスト</button>
 </template>
 
 <script setup lang="ts">

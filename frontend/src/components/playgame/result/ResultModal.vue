@@ -6,7 +6,6 @@
     <ResultUserList :class="$style.userList" />
     <ResultControl v-model:showResultModal="showResultModal" v-model:showStartModal="showStartModal" />
   </OverlayModal>
-  <button @click="showResultModal = true">resultモーダルのテスト</button>
 </template>
 
 <script setup lang="ts">

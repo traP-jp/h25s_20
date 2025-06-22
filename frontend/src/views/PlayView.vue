@@ -231,6 +231,24 @@ onMounted(() => {
   currentRoom.value = room;
   console.log("Current room:", currentRoom.value);
 
+  // 各ストアの初期化
+  // ゲーム結果ストアの初期化
+  gameResultStore.clearPlayers();
+
+  // ルームプレイヤーストアの初期化
+  roomPlayersStore.clearPlayers();
+
+  // 現在のルーム情報があれば、プレイヤー情報も初期化
+  if (room?.users && room.users.length > 0) {
+    // Room型のusersをroomPlayersStoreが期待する形式に変換
+    const roomPlayers = room.users.map((user) => ({
+      user_id: parseInt(user.id),
+      user_name: user.id, // Room型ではnameがないため、idをnameとして使用
+      is_ready: user.isReady,
+    }));
+    roomPlayersStore.updatePlayers(roomPlayers);
+  }
+
   // グローバルWebSocketストアに現在のコンポーネントのイベントハンドラーを設定
   // 既存のWebSocket接続がない場合は、ローカルストレージからユーザー名を取得して接続
   if (!webSocketStore.getWebSocketManager()) {

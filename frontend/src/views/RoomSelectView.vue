@@ -49,13 +49,33 @@ async function handleRoomClick(room: Room) {
       // ルーム情報をストアに保存
       currentRoomStore.setCurrentRoom(room);
 
-      // ルームに参加成功後、PlayViewに遷移（クエリパラメータのみ）
+      // ルーム参加後、最新のルーム情報（ユーザー情報含む）を取得
+      let finalRoom = room; // デフォルトは元のルーム情報
+      try {
+        const roomsResponse = await apiClient.getRooms();
+        if (roomsResponse.success) {
+          // 参加したルームの最新情報を取得
+          const updatedRoom = roomsResponse.data.find((r: Room) => r.roomId === room.roomId);
+          if (updatedRoom) {
+            // 最新のルーム情報でストアを更新
+            currentRoomStore.setCurrentRoom(updatedRoom);
+            finalRoom = updatedRoom; // 最新のルーム情報を使用
+            console.log("Updated room with latest user info:", updatedRoom);
+          }
+        } else {
+          console.warn("Failed to fetch updated room details:", roomsResponse.data);
+        }
+      } catch (error) {
+        console.warn("Error fetching updated room details:", error);
+      }
+
+      // ルームに参加成功後、PlayViewに遷移（最新のルーム情報を使用）
       router.push({
         name: "play",
-        params: { roomId: room.roomId.toString() },
+        params: { roomId: finalRoom.roomId.toString() },
         query: {
-          roomName: room.roomName,
-          isOpened: room.isOpened.toString(),
+          roomName: finalRoom.roomName,
+          isOpened: finalRoom.isOpened.toString(),
         },
       });
     } else {

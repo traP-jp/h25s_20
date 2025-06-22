@@ -1,20 +1,19 @@
 <template>
   <div :class="$style.container">
-    <ResultBadge :rank="props.rank" :class="$style.rank" />
-    <UserIcon :id="props.name" :size="40" />
-    <div :class="$style.userName">{{ props.name }}</div>
-    <div :class="$style.score">{{ props.score }}点</div>
+    <ResultBadge :rank="props.player.rank" :class="$style.rank" />
+    <UserIcon :id="props.player.name" :size="40" />
+    <div :class="$style.userName">{{ props.player.name }}</div>
+    <div :class="$style.score">{{ props.player.score }}点</div>
   </div>
 </template>
 <script setup lang="ts">
 // import { ref } from "vue";
 import ResultBadge from "@/components/playgame/result/ResultBadge.vue";
 import UserIcon from "@/components/UserIcon.vue";
+import type { ResultPlayer } from "@/lib/types";
 
 const props = defineProps<{
-  name: string;
-  rank: number;
-  score: number;
+  player: ResultPlayer;
 }>();
 </script>
 

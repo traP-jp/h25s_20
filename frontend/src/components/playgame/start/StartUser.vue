@@ -1,20 +1,17 @@
 <template>
   <div :class="$style.container">
-    <ReadyIcon :id="props.name" :size="40" :isReady="props.isReady" />
-    <div :class="$style.userName">{{ props.name }}</div>
-    <StartBadge :gold="props.gold" :silver="props.silver" :bronze="props.bronze" />
+    <ReadyIcon :id="props.player.name" :size="40" :isReady="props.player.isReady" />
+    <div :class="$style.userName">{{ props.player.name }}</div>
+    <StartBadge :gold="props.player.gold" :silver="props.player.silver" :bronze="props.player.bronze" />
   </div>
 </template>
 <script setup lang="ts">
 import StartBadge from "@/components/playgame/start/StartBadge.vue";
 import ReadyIcon from "@/components/ReadyIcon.vue";
+import type { StartPlayer } from "@/lib/types";
 
 const props = defineProps<{
-  name: string;
-  gold: number;
-  silver: number;
-  bronze: number;
-  isReady: boolean;
+  player: StartPlayer;
 }>();
 </script>
 
