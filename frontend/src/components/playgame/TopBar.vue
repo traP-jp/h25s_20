@@ -1,10 +1,10 @@
 <template>
   <div :class="$style.container">
     <div :class="$style.content">
-      <UserIcon :class="$style.myIcon" :id="`me`" :size="60" />
+      <UserIcon :class="$style.myIcon" :id="`me`" :size="40" />
       <div :class="$style.myName">{{ "me" }}</div>
       <div :class="$style.right">
-        <div :class="$style.roomName">{{ room.name }}</div>
+        <div :class="$style.roomName">{{ room?.name || "" }}</div>
         <img src="/logo.svg" alt="Logo" :class="$style.logo" />
       </div>
     </div>
@@ -26,7 +26,7 @@ const room = defineModel<Room>("room");
   left: 0;
   z-index: 10;
   width: 100vw;
-  height: 50px;
+  height: 40px;
 }
 
 .content {
@@ -43,15 +43,15 @@ const room = defineModel<Room>("room");
   z-index: 1;
   border: 3px solid #ff88bb;
   position: absolute;
-  left: 20px;
-  top: 14px;
+  left: 15px;
+  top: 10px;
 }
 
 .myName {
-  margin-top: 10px;
-  margin-left: 95px;
+  margin-top: 6px;
+  margin-left: 70px;
   font-weight: bold;
-  font-size: 20px;
+  font-size: 15px;
 }
 
 .right {
@@ -66,10 +66,11 @@ const room = defineModel<Room>("room");
   padding: 0 10px;
   border-radius: 1em;
   font-weight: bold;
+  font-size: 12px;
 }
 
 .logo {
-  height: 24px;
+  height: 18px;
   margin: 0 10px;
 }
 </style>
