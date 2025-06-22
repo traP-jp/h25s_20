@@ -20,6 +20,30 @@ export interface ConnectionEventContent extends BaseEventContent {
 
 export interface PlayerEventContent extends BaseEventContent {}
 
+export interface PlayerJoinedEventContent extends BaseEventContent {
+  room: RoomInfo;
+}
+
+export interface PlayerLeftEventContent extends BaseEventContent {
+  room: RoomInfo;
+}
+
+export interface RoomInfo {
+  id: number;
+  name: string;
+  state: string;
+  is_opened: boolean;
+  players: PlayerInfo[];
+}
+
+export interface PlayerInfo {
+  id: number;
+  user_name: string;
+  is_ready: boolean;
+  has_closed_result: boolean;
+  score: number;
+}
+
 export interface BoardData {
   content: number[];
   version: number;
@@ -57,6 +81,8 @@ export interface RoomStateEventContent extends BaseEventContent {
 export type EventContent =
   | ConnectionEventContent
   | PlayerEventContent
+  | PlayerJoinedEventContent
+  | PlayerLeftEventContent
   | BoardUpdateEventContent
   | CountdownEventContent
   | GameEndEventContent
@@ -202,9 +228,10 @@ export class WebSocketManager {
         break;
 
       case WS_EVENTS.PLAYER_JOINED:
-        const joinedContent = wsEvent.content as PlayerEventContent;
+        const joinedContent = wsEvent.content as PlayerJoinedEventContent;
         this.addMessage(
-          `👤 プレイヤー参加: ${joinedContent.user_name} (ID: ${joinedContent.user_id}) がルーム ${joinedContent.room_id} に参加`
+          `👤 プレイヤー参加: ${joinedContent.user_name} (ID: ${joinedContent.user_id}) がルーム ${joinedContent.room_id} に参加\n` +
+          `🏠 ルーム状態: ${joinedContent.room.state}, プレイヤー数: ${joinedContent.room.players.length}`
         );
         break;
 
@@ -219,8 +246,11 @@ export class WebSocketManager {
         break;
 
       case WS_EVENTS.PLAYER_LEFT:
-        const leftContent = wsEvent.content as PlayerEventContent;
-        this.addMessage(`👋 プレイヤー退出: ${leftContent.user_name} がルームから退出`);
+        const leftContent = wsEvent.content as PlayerLeftEventContent;
+        this.addMessage(
+          `👋 プレイヤー退出: ${leftContent.user_name} がルームから退出\n` +
+          `🏠 ルーム状態: ${leftContent.room.state}, プレイヤー数: ${leftContent.room.players.length}`
+        );
         break;
 
       case WS_EVENTS.ROOM_STATE_CHANGED:

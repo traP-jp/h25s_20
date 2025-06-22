@@ -42,7 +42,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 	switch req.Action {
 	case models.JOIN:
-		_, err := h.roomUsecase.AddPlayerToRoom(roomId, player)
+		updatedRoom, err := h.roomUsecase.AddPlayerToRoom(roomId, player)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to join room: " + err.Error(),
@@ -59,9 +59,25 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 			}
 		}
 
-		// WebSocketでルーム全員に通知
+		// ルーム情報を構築
+		var playerInfos []wsManager.PlayerInfo
+		for _, p := range updatedRoom.Players {
+			playerInfos = append(playerInfos, wsManager.ConvertToPlayerInfo(
+				p.ID, p.UserName, p.IsReady, p.HasClosedResult, p.Score,
+			))
+		}
+
+		roomInfo := wsManager.ConvertToRoomInfo(
+			updatedRoom.ID,
+			updatedRoom.Name,
+			updatedRoom.State.String(),
+			updatedRoom.IsOpened,
+			playerInfos,
+		)
+
+		// WebSocketでルーム全員に通知（ルーム情報付き）
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerJoined, player.ID, player.UserName)
+			h.WebSocketHandler.SendPlayerJoinedEventToRoom(player.ID, player.UserName, roomInfo)
 		}
 		return c.NoContent(http.StatusNoContent)
 
@@ -132,14 +148,30 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		// プレイヤーをルームから削除
-		_, err := h.roomUsecase.RemovePlayerFromRoom(roomId, player.ID)
+		updatedRoom, err := h.roomUsecase.RemovePlayerFromRoom(roomId, player.ID)
 		if err != nil {
 			// プレイヤーが見つからない場合でもエラーにしない（既に退出済みの可能性）
 		}
 
-		// WebSocketでの通知
-		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerLeft, player.ID, player.UserName)
+		// ルーム情報を構築（退出後の状態）
+		if updatedRoom != nil && h.WebSocketHandler != nil {
+			var playerInfos []wsManager.PlayerInfo
+			for _, p := range updatedRoom.Players {
+				playerInfos = append(playerInfos, wsManager.ConvertToPlayerInfo(
+					p.ID, p.UserName, p.IsReady, p.HasClosedResult, p.Score,
+				))
+			}
+
+			roomInfo := wsManager.ConvertToRoomInfo(
+				updatedRoom.ID,
+				updatedRoom.Name,
+				updatedRoom.State.String(),
+				updatedRoom.IsOpened,
+				playerInfos,
+			)
+
+			// WebSocketでルーム全員に通知（ルーム情報付き）
+			h.WebSocketHandler.SendPlayerLeftEventToRoom(player.ID, player.UserName, roomInfo)
 		}
 
 		return c.NoContent(http.StatusNoContent)

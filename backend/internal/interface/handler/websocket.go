@@ -191,6 +191,18 @@ func (h *WebSocketHandler) SendPlayerEventToRoom(roomID int, eventType string, u
 	h.manager.SendEventToRoom(roomID, event)
 }
 
+// SendPlayerJoinedEventToRoom sends a player joined event with room information to all room members
+func (h *WebSocketHandler) SendPlayerJoinedEventToRoom(userID int, userName string, room wsManager.RoomInfo) {
+	event := wsManager.NewPlayerJoinedEvent(userID, userName, room)
+	h.manager.SendEventToRoom(room.ID, event)
+}
+
+// SendPlayerLeftEventToRoom sends a player left event with room information to all room members
+func (h *WebSocketHandler) SendPlayerLeftEventToRoom(userID int, userName string, room wsManager.RoomInfo) {
+	event := wsManager.NewPlayerLeftEvent(userID, userName, room)
+	h.manager.SendEventToRoom(room.ID, event)
+}
+
 // SendGameStartEventToRoom sends a game start event to all room members
 func (h *WebSocketHandler) SendGameStartEventToRoom(roomID int, message string) {
 	event := wsManager.NewGameStartEvent(roomID, message)

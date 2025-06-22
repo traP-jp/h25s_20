@@ -64,6 +64,44 @@ func (p PlayerEventContent) GetEventType() string {
 	return "player"
 }
 
+// プレイヤー参加イベント用（ルーム情報付き）
+type PlayerJoinedEventContent struct {
+	BaseEventContent
+	Room RoomInfo `json:"room"`
+}
+
+func (p PlayerJoinedEventContent) GetEventType() string {
+	return "player_joined"
+}
+
+// プレイヤー退出イベント用（ルーム情報付き）
+type PlayerLeftEventContent struct {
+	BaseEventContent
+	Room RoomInfo `json:"room"`
+}
+
+func (p PlayerLeftEventContent) GetEventType() string {
+	return "player_left"
+}
+
+// ルーム情報
+type RoomInfo struct {
+	ID       int          `json:"id"`
+	Name     string       `json:"name"`
+	State    string       `json:"state"`
+	IsOpened bool         `json:"is_opened"`
+	Players  []PlayerInfo `json:"players"`
+}
+
+// プレイヤー情報
+type PlayerInfo struct {
+	ID              int    `json:"id"`
+	UserName        string `json:"user_name"`
+	IsReady         bool   `json:"is_ready"`
+	HasClosedResult bool   `json:"has_closed_result"`
+	Score           int    `json:"score"`
+}
+
 // ゲーム開始用
 type GameStartEventContent struct {
 	BaseEventContent
@@ -136,6 +174,34 @@ func NewPlayerEvent(eventType string, userID int, userName string, roomID int) W
 				UserName: userName,
 				RoomID:   roomID,
 			},
+		},
+	}
+}
+
+func NewPlayerJoinedEvent(userID int, userName string, room RoomInfo) WebSocketEvent {
+	return WebSocketEvent{
+		Event: EventPlayerJoined,
+		Content: PlayerJoinedEventContent{
+			BaseEventContent: BaseEventContent{
+				UserID:   userID,
+				UserName: userName,
+				RoomID:   room.ID,
+			},
+			Room: room,
+		},
+	}
+}
+
+func NewPlayerLeftEvent(userID int, userName string, room RoomInfo) WebSocketEvent {
+	return WebSocketEvent{
+		Event: EventPlayerLeft,
+		Content: PlayerLeftEventContent{
+			BaseEventContent: BaseEventContent{
+				UserID:   userID,
+				UserName: userName,
+				RoomID:   room.ID,
+			},
+			Room: room,
 		},
 	}
 }
@@ -215,5 +281,43 @@ func NewGameStartBoardEvent(roomID int, message string, board BoardData) WebSock
 			},
 			Board: board,
 		},
+	}
+}
+
+// domain.RoomからRoomInfoへの変換ヘルパー関数
+// この関数はインポートループを避けるため、domain.Roomを受け取らずにinterfaceを使用
+type DomainRoom interface {
+	GetID() int
+	GetName() string
+	GetState() string
+	GetIsOpened() bool
+	GetPlayers() []DomainPlayer
+}
+
+type DomainPlayer interface {
+	GetID() int
+	GetUserName() string
+	GetIsReady() bool
+	GetHasClosedResult() bool
+	GetScore() int
+}
+
+func ConvertToRoomInfo(id int, name string, state string, isOpened bool, players []PlayerInfo) RoomInfo {
+	return RoomInfo{
+		ID:       id,
+		Name:     name,
+		State:    state,
+		IsOpened: isOpened,
+		Players:  players,
+	}
+}
+
+func ConvertToPlayerInfo(id int, userName string, isReady bool, hasClosedResult bool, score int) PlayerInfo {
+	return PlayerInfo{
+		ID:              id,
+		UserName:        userName,
+		IsReady:         isReady,
+		HasClosedResult: hasClosedResult,
+		Score:           score,
 	}
 }
