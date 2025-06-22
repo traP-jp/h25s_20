@@ -3,12 +3,12 @@
     <img :class="$style.logo" src="/logo.svg" alt="Logo" />
     <div :class="$style.header">部屋を選んで入室</div>
     <div :class="$style.rooms">
-      <RoomButton v-for="room in roomData" :key="room.id" :room="room" @click="handleRoomClick(room)" />
+      <RoomButton v-for="room in roomData" :key="room.roomId" :room="room" @click="handleRoomClick(room)" />
     </div>
 
-    <button :class="$style.button" @click="onClick">
+    <!-- <button :class="$style.button" @click="onClick">
       プレイ方法を確認
-    </button>
+    </button> -->
   </div>
 </template>
 
@@ -111,11 +111,13 @@ onMounted(() => {
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.2s ease;
-  text-align: center; text-align: center;
+  text-align: center;
+  text-align: center;
 }
 
 .button:hover {
-  background-color: #218838; background-color: #218838;
+  background-color: #218838;
+  background-color: #218838;
 }
 
 .empty {
