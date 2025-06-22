@@ -1,8 +1,8 @@
 <template>
   <div :class="$style.container">
     <div :class="$style.content">
-      <UserIcon :class="$style.myIcon" :id="`me`" :size="40" />
-      <div :class="$style.myName">{{ "me" }}</div>
+      <UserIcon :class="$style.myIcon" :id="currentUsername" :size="40" />
+      <div :class="$style.myName">{{ currentUsername }}</div>
       <div :class="$style.right">
         <TextMark :text="room?.roomName || ''" :bgColor="`#008800`" />
         <img src="/logo.svg" alt="Logo" :class="$style.logo" />
@@ -15,6 +15,16 @@
 import type { Room } from "@/lib/types.ts";
 import UserIcon from "@/components/UserIcon.vue";
 import TextMark from "@/components/TextMark.vue";
+import { useWebSocketStore } from "@/store";
+import { computed } from "vue";
+
+// WebSocketストアからユーザー名を取得
+const webSocketStore = useWebSocketStore();
+
+// WebSocketStoreのcurrentUsernameが空の場合はlocalStorageから取得
+const currentUsername = computed(() => {
+  return webSocketStore.currentUsername || localStorage.getItem("username") || "Unknown";
+});
 
 // propsからroomを受け取る
 defineProps<{

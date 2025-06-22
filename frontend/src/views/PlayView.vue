@@ -69,10 +69,28 @@ const gameTime = ref(60); // 初期時間60秒
 const gameStarted = ref(false);
 const countdown = ref(-1); // -1 means hide the countdown screen
 
-// 現在のユーザーIDを取得（仮実装）
+// 現在のユーザーIDを取得
 function getCurrentUserId(): number {
-  // 実際の実装では認証情報から取得
-  return 1;
+  try {
+    const token = localStorage.getItem("authToken");
+    if (!token) {
+      console.warn("認証トークンが見つかりません");
+      return 0;
+    }
+
+    // JWTトークンをデコード（セキュアではないが、ペイロード部分のみを読み取り）
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    
+    if (payload.user_id) {
+      return Number(payload.user_id);
+    }
+    
+    console.warn("トークンにuser_idが含まれていません");
+    return 0;
+  } catch (error) {
+    console.error("JWTトークンの解析に失敗しました:", error);
+    return 0;
+  }
 }
 
 const version = ref(0); // フォーミュラのバージョン管理
@@ -206,10 +224,12 @@ onMounted(() => {
             console.log("Updating board from WebSocket:", boardContent.board.content);
             board.value = boardContent.board.content;
           }
-          // スコアも更新
-          if (boardContent.gain_score) {
+          // 自分が提出した数式の得点のみを自分のスコアに加算
+          if (boardContent.gain_score && boardContent.user_id === getCurrentUserId()) {
             gameScore.value += boardContent.gain_score;
-            console.log("Score updated:", gameScore.value);
+            console.log("Score updated (own submission):", gameScore.value, "gained:", boardContent.gain_score);
+          } else if (boardContent.gain_score) {
+            console.log("Score gained by other player:", boardContent.user_name, "gained:", boardContent.gain_score);
           }
           version.value = boardContent.board.version;
         }
