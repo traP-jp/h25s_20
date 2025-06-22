@@ -1,7 +1,7 @@
 <template>
   <div :class="$style.container">
     <StartUser
-      v-for="player in players"
+      v-for="player in roomPlayersStore.players"
       :key="player.id"
       :id="player.id"
       :name="player.name"
@@ -14,12 +14,9 @@
 </template>
 <script setup lang="ts">
 import StartUser from "@/components/playgame/start/StartUser.vue";
+import { useRoomPlayersStore } from "@/store";
 
-const players = [
-  { id: 0, name: "kitsne", gold: 3, silver: 2, bronze: 1, isReady: true },
-  { id: 1, name: "mikannkann", gold: 2, silver: 1, bronze: 0, isReady: false },
-  { id: 2, name: "rurun", gold: 1, silver: 0, bronze: 0, isReady: true },
-];
+const roomPlayersStore = useRoomPlayersStore();
 </script>
 
 <style module>

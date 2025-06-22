@@ -17,11 +17,15 @@
     </div>
 
     <div :class="$style.inputbox">
-      <MathInput v-model:board="board" v-model:current-expression="currentExpression" />
+      <MathInput
+        v-model:board="board"
+        v-model:current-expression="currentExpression"
+        v-model:currentRoom="currentRoom"
+      />
     </div>
 
-    <StartModal />
-    <ResultModal />
+    <StartModal v-model:showStartModal="showStartModal" />
+    <ResultModal v-model:showResultModal="showResultModal" v-model:showStartModal="showStartModal" />
 
     <TopBar :room="currentRoom" />
     <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
@@ -31,14 +35,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch, provide, computed } from "vue";
+import { ref, watch, computed } from "vue";
 import {
   type WebSocketEvent,
   type BoardUpdateEventContent,
   type CountdownEventContent,
+  type GameEndEventContent,
+  type RoomStateEventContent,
   WS_EVENTS,
 } from "@/lib/websocket";
-import { useWebSocketStore } from "@/store";
+import { useWebSocketStore, useGameResultStore, useRoomPlayersStore, useCurrentRoomStore } from "@/store";
 import TopBar from "@/components/playgame/TopBar.vue";
 import type { Room } from "@/lib/types";
 
@@ -56,10 +62,12 @@ import { useRoute } from "vue-router";
 
 // ルーターから情報を取得
 const route = useRoute();
-const currentRoom = ref<Room | null>(null);
 
 // WebSocketストアを取得
 const webSocketStore = useWebSocketStore();
+const gameResultStore = useGameResultStore();
+const roomPlayersStore = useRoomPlayersStore();
+const currentRoomStore = useCurrentRoomStore();
 
 // ゲーム状態
 const gameScore = ref(0);
@@ -98,6 +106,27 @@ function handleWebSocketEvent(event: WebSocketEvent) {
       }
       break;
 
+    case WS_EVENTS.ROOM_STATE_CHANGED:
+      const roomStateEvent = event.content as RoomStateEventContent;
+      if (roomStateEvent.players) {
+        roomPlayersStore.updatePlayers(roomStateEvent.players);
+      }
+      break;
+
+    case WS_EVENTS.PLAYER_READY:
+      const readyEvent = event.content as import("@/lib/websocket").PlayerEventContent;
+      if (readyEvent.user_id) {
+        roomPlayersStore.setPlayerReady(readyEvent.user_id.toString(), true);
+      }
+      break;
+
+    case WS_EVENTS.PLAYER_CANCELED:
+      const canceledEvent = event.content as import("@/lib/websocket").PlayerEventContent;
+      if (canceledEvent.user_id) {
+        roomPlayersStore.setPlayerReady(canceledEvent.user_id.toString(), false);
+      }
+      break;
+
     case WS_EVENTS.GAME_STARTED:
       gameStarted.value = true;
       countdown.value = -1;
@@ -105,8 +134,14 @@ function handleWebSocketEvent(event: WebSocketEvent) {
       break;
 
     case WS_EVENTS.GAME_ENDED:
+      const gameEndedEvent = event.content as GameEndEventContent;
       gameStarted.value = false;
       stopGameTimer();
+
+      // 最終スコアデータがある場合はストアを更新
+      if (gameEndedEvent.final_scores) {
+        gameResultStore.updatePlayers(gameEndedEvent.final_scores);
+      }
       break;
   }
 }
@@ -172,25 +207,28 @@ function sendBoardUpdate(newBoard: number[], gainScore: number) {
 
 // ルーターから渡された情報を取得
 onMounted(() => {
-  // ルートのstateからroom情報を取得
-  if (history.state && history.state.room) {
-    currentRoom.value = history.state.room;
-  } else {
-    // state経由でない場合はクエリパラメータから復元
+  // まずストアからルーム情報を取得
+  let room = currentRoomStore.getCurrentRoom();
+
+  if (!room) {
+    // ストアにない場合はクエリパラメータから復元
     const roomId = route.params.roomId as string;
     const roomName = route.query.roomName as string;
     const isOpened = route.query.isOpened === "true";
 
     if (roomId && roomName) {
-      currentRoom.value = {
+      room = {
         roomId: parseInt(roomId),
         roomName,
         isOpened,
         users: [],
       };
+      // ストアに保存
+      currentRoomStore.setCurrentRoom(room);
     }
   }
 
+  currentRoom.value = room;
   console.log("Current room:", currentRoom.value);
 
   // グローバルWebSocketストアに現在のコンポーネントのイベントハンドラーを設定
@@ -237,12 +275,9 @@ const players = [
   { icon: "/images/player2.png", name: "Player 02", score: 50 },
 ];
 
-const showStartModal = ref(false);
+const showStartModal = ref(true);
 const showResultModal = ref(false);
-
-provide("showStartModal", showStartModal);
-provide("showResultModal", showResultModal);
-provide("currentRoom", currentRoom);
+const currentRoom = ref<Room | null>(null);
 
 // 盤面の変更を監視してWebSocketで送信
 watch(board, (newBoard: number[], oldBoard: number[]) => {

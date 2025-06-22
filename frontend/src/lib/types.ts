@@ -21,3 +21,21 @@ export type PlayerScore = {
   playerId: string;
   score: number;
 };
+
+// ゲーム結果表示用のプレイヤー情報
+export type ResultPlayer = {
+  id: string;
+  name: string;
+  score: number;
+  rank: number;
+};
+
+// ゲーム開始前の待機室用プレイヤー情報
+export type StartPlayer = {
+  id: string;
+  name: string;
+  gold: number;
+  silver: number;
+  bronze: number;
+  isReady: boolean;
+};

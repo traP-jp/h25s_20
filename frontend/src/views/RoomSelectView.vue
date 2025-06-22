@@ -18,9 +18,11 @@ import { useRouter } from "vue-router";
 import { apiClient } from "@/api";
 import RoomButton from "@/components/RoomButton.vue";
 import type { Room } from "@/lib/types";
+import { useCurrentRoomStore } from "@/store";
 
 const roomData = ref<Room[]>([]);
 const router = useRouter();
+const currentRoomStore = useCurrentRoomStore();
 
 async function fetchRooms() {
   try {
@@ -43,7 +45,11 @@ async function handleRoomClick(room: Room) {
 
     if (response.success) {
       console.log("Successfully joined room:", room.roomId);
-      // ルームに参加成功後、PlayViewに遷移（ルーム情報をクエリパラメータとして渡す）
+
+      // ルーム情報をストアに保存
+      currentRoomStore.setCurrentRoom(room);
+
+      // ルームに参加成功後、PlayViewに遷移（クエリパラメータのみ）
       router.push({
         name: "play",
         params: { roomId: room.roomId.toString() },
@@ -51,7 +57,6 @@ async function handleRoomClick(room: Room) {
           roomName: room.roomName,
           isOpened: room.isOpened.toString(),
         },
-        state: { room },
       });
     } else {
       console.error("Failed to join room:", response.data);

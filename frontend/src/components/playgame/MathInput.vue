@@ -47,7 +47,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted, inject } from "vue";
+import { computed, ref, onMounted, onUnmounted } from "vue";
 import MathInputButton from "./MathInputButton.vue";
 import { defineModel, watch } from "vue";
 import { checkMath } from "@/lib/board-update";
@@ -58,7 +58,8 @@ const board = defineModel<number[]>("board");
 const version = ref(0); // フォーミュラのバージョン管理
 
 // 親コンポーネントからroomを注入
-const currentRoom = inject<any>("currentRoom");
+import type { Room } from "@/lib/types";
+const currentRoom = defineModel<Room | null>("currentRoom");
 
 const handleKeydown = (event: KeyboardEvent) => {
   // 数字キー (1-9)

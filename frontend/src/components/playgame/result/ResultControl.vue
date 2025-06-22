@@ -6,10 +6,10 @@
   </div>
 </template>
 <script setup lang="ts">
-import { inject } from "vue";
+import { defineModel } from "vue";
 
-const showStartModal = inject("showStartModal") as any;
-const showResultModal = inject("showResultModal") as any;
+const showStartModal = defineModel<boolean>("showStartModal");
+const showResultModal = defineModel<boolean>("showResultModal");
 
 const onClickMain = () => {
   // send an event to backend

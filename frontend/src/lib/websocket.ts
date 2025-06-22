@@ -36,11 +36,31 @@ export interface CountdownEventContent extends BaseEventContent {
   countdown?: number;
 }
 
+export interface GameEndEventContent extends BaseEventContent {
+  final_scores?: Array<{
+    user_id: number;
+    user_name: string;
+    score: number;
+  }>;
+}
+
+export interface RoomStateEventContent extends BaseEventContent {
+  state?: string;
+  players?: Array<{
+    user_id: number;
+    user_name: string;
+    is_ready: boolean;
+    // 実績データは現在のAPIでは提供されていないため、デフォルト値を使用
+  }>;
+}
+
 export type EventContent =
   | ConnectionEventContent
   | PlayerEventContent
   | BoardUpdateEventContent
   | CountdownEventContent
+  | GameEndEventContent
+  | RoomStateEventContent
   | BaseEventContent;
 
 // WebSocketイベント名の定数
@@ -50,6 +70,7 @@ export const WS_EVENTS = {
   PLAYER_READY: "player_ready",
   PLAYER_CANCELED: "player_canceled",
   PLAYER_LEFT: "player_left",
+  ROOM_STATE_CHANGED: "room_state_changed",
   GAME_STARTED: "game_started",
   GAME_START: "game_start",
   COUNTDOWN_START: "countdown_start",
@@ -202,6 +223,13 @@ export class WebSocketManager {
         this.addMessage(`👋 プレイヤー退出: ${leftContent.user_name} がルームから退出`);
         break;
 
+      case WS_EVENTS.ROOM_STATE_CHANGED:
+        const roomStateContent = wsEvent.content as RoomStateEventContent;
+        this.addMessage(
+          `🏠 部屋状態変更: ${roomStateContent.state}, プレイヤー数: ${roomStateContent.players?.length || 0}`
+        );
+        break;
+
       case WS_EVENTS.GAME_STARTED:
         const gameStartedContent = wsEvent.content as BaseEventContent;
         this.addMessage(`🎮 ゲーム開始: ${gameStartedContent.message}`);
@@ -225,8 +253,13 @@ export class WebSocketManager {
         break;
 
       case WS_EVENTS.GAME_ENDED:
-        const gameEndedContent = wsEvent.content as BaseEventContent;
+        const gameEndedContent = wsEvent.content as GameEndEventContent;
         this.addMessage(`🏁 ゲーム終了: ${gameEndedContent.message}`);
+        if (gameEndedContent.final_scores) {
+          this.addMessage(
+            `📊 最終スコア: ${gameEndedContent.final_scores.map((s) => `${s.user_name}: ${s.score}点`).join(", ")}`
+          );
+        }
         break;
 
       default:

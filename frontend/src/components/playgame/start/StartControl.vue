@@ -9,10 +9,9 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { ref, defineModel } from "vue";
 
-// const showStartModal = inject<boolean>("showStartModal");
-// const showResultModal = inject<boolean>("showResultModal");
+const showResultModal = defineModel<boolean>("showResultModal");
 
 const BtnMsg = ref("準備OK!");
 const isBtnDisabled = ref(false);
@@ -26,10 +25,7 @@ const onClickMain = () => {
 
 const onClickQuit = () => {
   // send an event to backend
-  // close modal
-  // if (showResultModal) {
-  //   showResultModal = false;
-  // }
+  showResultModal.value = false;
 };
 
 const onClickCancel = () => {

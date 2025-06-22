@@ -1,6 +1,7 @@
 import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useWebSocket, type WebSocketEvent } from "@/lib/websocket";
+import { type ResultPlayer, type StartPlayer, type Room } from "@/lib/types";
 
 export const useNotificationStore = defineStore("notificationStore", () => {
   const notifications = ref<string[]>([]);
@@ -12,6 +13,105 @@ export const useNotificationStore = defineStore("notificationStore", () => {
   return {
     notifications,
     addNotification,
+  };
+});
+
+// ゲーム開始前のプレイヤー管理ストア
+export const useRoomPlayersStore = defineStore("roomPlayersStore", () => {
+  const players = ref<StartPlayer[]>([]);
+
+  const updatePlayers = (roomPlayers: Array<{ user_id: number; user_name: string; is_ready: boolean }>) => {
+    players.value = roomPlayers.map((player) => ({
+      id: player.user_id.toString(),
+      name: player.user_name,
+      gold: 0, // デフォルト値（実績データが無いため）
+      silver: 0,
+      bronze: 0,
+      isReady: player.is_ready,
+    }));
+  };
+
+  const setPlayerReady = (userId: string, isReady: boolean) => {
+    const player = players.value.find((p) => p.id === userId);
+    if (player) {
+      player.isReady = isReady;
+    }
+  };
+
+  const clearPlayers = () => {
+    players.value = [];
+  };
+
+  return {
+    players,
+    updatePlayers,
+    setPlayerReady,
+    clearPlayers,
+  };
+});
+
+// ゲーム結果管理ストア
+export const useGameResultStore = defineStore("gameResultStore", () => {
+  const players = ref<ResultPlayer[]>([]);
+
+  const updatePlayers = (finalScores: Array<{ user_id: number; user_name: string; score: number }>) => {
+    // スコア順でソートしてランクを計算
+    const sortedScores = [...finalScores].sort((a, b) => b.score - a.score);
+
+    players.value = sortedScores.map((player, index) => ({
+      id: player.user_id.toString(),
+      name: player.user_name,
+      score: player.score,
+      rank: index + 1,
+    }));
+  };
+
+  const clearPlayers = () => {
+    players.value = [];
+  };
+
+  return {
+    players,
+    updatePlayers,
+    clearPlayers,
+  };
+});
+
+// ルーム情報管理ストア
+export const useCurrentRoomStore = defineStore("currentRoomStore", () => {
+  const currentRoom = ref<Room | null>(null);
+
+  const setCurrentRoom = (room: Room) => {
+    currentRoom.value = room;
+    // localStorageにも保存してPWAでの状態保持を確実にする
+    localStorage.setItem("currentRoom", JSON.stringify(room));
+  };
+
+  const getCurrentRoom = () => {
+    if (!currentRoom.value) {
+      // メモリにない場合はlocalStorageから復元
+      const stored = localStorage.getItem("currentRoom");
+      if (stored) {
+        try {
+          currentRoom.value = JSON.parse(stored);
+        } catch (error) {
+          console.error("Failed to parse stored room data:", error);
+        }
+      }
+    }
+    return currentRoom.value;
+  };
+
+  const clearCurrentRoom = () => {
+    currentRoom.value = null;
+    localStorage.removeItem("currentRoom");
+  };
+
+  return {
+    currentRoom,
+    setCurrentRoom,
+    getCurrentRoom,
+    clearCurrentRoom,
   };
 });
 
