@@ -39,8 +39,16 @@ async function handleRoomClick(room: Room) {
 
     if (response.success) {
       console.log("Successfully joined room:", room.roomId);
-      // ルームに参加成功後、PlayViewに遷移
-      router.push(`/play/${room.roomId}`);
+      // ルームに参加成功後、PlayViewに遷移（ルーム情報をクエリパラメータとして渡す）
+      router.push({
+        name: "play",
+        params: { roomId: room.roomId.toString() },
+        query: {
+          roomName: room.roomName,
+          isOpened: room.isOpened.toString(),
+        },
+        state: { room },
+      });
     } else {
       console.error("Failed to join room:", response.data);
       alert("ルームへの参加に失敗しました");
