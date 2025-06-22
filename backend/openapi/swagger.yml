@@ -233,8 +233,7 @@ components:
         users:
           type: array
           items:
-            type: string
-            example: "player1"
+            $ref: "#/components/schemas/User"
         isOpened:
           type: boolean
           example: true
@@ -243,6 +242,19 @@ components:
         - roomName
         - users
         - isOpened
+
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "player1"
+        isReady:
+          type: boolean
+          example: false
+      required:
+        - username
+        - isReady
 
     AuthResponse:
       type: object

@@ -34,10 +34,10 @@ type Board struct {
 
 // Room defines model for Room.
 type Room struct {
-	IsOpened bool     `json:"isOpened"`
-	RoomId   int      `json:"roomId"`
-	RoomName string   `json:"roomName"`
-	Users    []string `json:"users"`
+	IsOpened bool   `json:"isOpened"`
+	RoomId   int    `json:"roomId"`
+	RoomName string `json:"roomName"`
+	Users    []User `json:"users"`
 }
 
 // RoomResultItem defines model for RoomResultItem.
@@ -46,6 +46,12 @@ type RoomResultItem struct {
 
 	// User username
 	User string `json:"user"`
+}
+
+// User defines model for User.
+type User struct {
+	IsReady  bool   `json:"isReady"`
+	Username string `json:"username"`
 }
 
 // UserCreate defines model for UserCreate.

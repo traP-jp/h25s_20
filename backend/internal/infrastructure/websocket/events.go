@@ -10,6 +10,7 @@ const (
 	EventPlayerReady    = "player_ready"
 	EventPlayerCanceled = "player_canceled"
 	EventPlayerLeft     = "player_left"
+	EventPlayerAllReady = "player_all_ready"
 
 	// ゲーム関連
 	EventGameStarted    = "game_started"
@@ -263,6 +264,18 @@ func NewGameEndEvent(roomID int, message string) WebSocketEvent {
 	return WebSocketEvent{
 		Event: EventGameEnded,
 		Content: GameStartEventContent{
+			BaseEventContent: BaseEventContent{
+				RoomID:  roomID,
+				Message: message,
+			},
+		},
+	}
+}
+
+func NewPlayerAllReadyEvent(roomID int, message string) WebSocketEvent {
+	return WebSocketEvent{
+		Event: EventPlayerAllReady,
+		Content: PlayerEventContent{
 			BaseEventContent: BaseEventContent{
 				RoomID:  roomID,
 				Message: message,

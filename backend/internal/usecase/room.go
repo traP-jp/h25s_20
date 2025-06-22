@@ -44,9 +44,12 @@ func (r *RoomUsecase) GetRooms() []models.Room {
 	var rooms []models.Room
 	for _, domainRoom := range r.rooms {
 		// domain.RoomからAPI用のmodels.Roomに変換
-		users := make([]string, len(domainRoom.Players))
+		users := make([]models.User, len(domainRoom.Players))
 		for i, player := range domainRoom.Players {
-			users[i] = player.UserName // Playerに Name フィールドがあると仮定
+			users[i] = models.User{
+				Username: player.UserName,
+				IsReady:  player.IsReady,
+			}
 		}
 
 		apiRoom := models.Room{
@@ -305,7 +308,7 @@ func (r *RoomUsecase) ApplyFormulaWithVersion(roomID int, playerID int, formula 
 		room.StreakCount = 1
 		room.LastCorrectPlayerID = playerID
 	}
-	
+
 	// スコア計算: 消した組数 * (5+5*"連続正解数")点
 	gainScore := matchCount * (5 + 5*room.StreakCount)
 

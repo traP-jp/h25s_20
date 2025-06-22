@@ -82,7 +82,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		return c.NoContent(http.StatusNoContent)
 
 	case models.READY:
-		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, true)
+		updatedRoom, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, true)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to update ready status: " + err.Error(),
@@ -90,10 +90,16 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 		// WebSocketでルーム全員に通知
 		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerReady, player.ID, player.UserName)
+
+		// 全員準備完了チェック
+		if updatedRoom.AreAllPlayersReady() && len(updatedRoom.Players) > 0 {
+			h.WebSocketHandler.SendPlayerAllReadyEventToRoom(roomId, "All players are ready!")
+		}
+
 		return c.NoContent(http.StatusNoContent)
 
 	case models.CANCEL:
-		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, false)
+		updatedRoom, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, false)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to cancel ready status: " + err.Error(),
@@ -101,6 +107,13 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerCanceled, player.ID, player.UserName)
+
+		// 全員準備完了状態から変更されたかチェック（必要に応じて通知）
+		if !updatedRoom.AreAllPlayersReady() {
+			// 必要に応じて「準備完了状態解除」イベントを送信
+			// 現在は特別な処理なし
+		}
+
 		return c.NoContent(http.StatusNoContent)
 
 	case models.START:
