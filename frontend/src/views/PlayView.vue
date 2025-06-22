@@ -121,4 +121,8 @@ watch(board, (newBoard) => {
   font-size: 20px;
   font-weight: bold;
 }
+
+.board {
+  padding: 14px;
+}
 </style>
