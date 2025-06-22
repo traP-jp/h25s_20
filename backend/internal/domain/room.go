@@ -36,13 +36,15 @@ func (rs RoomState) String() string {
 }
 
 type Room struct {
-	ID         int
-	Name       string
-	GameBoards []GameBoard
-	IsOpened   bool
-	Players    []Player
-	ResultLog  []Result
-	State      RoomState // ステートマシンの現在の状態
+	ID                  int
+	Name                string
+	GameBoards          []GameBoard
+	IsOpened            bool
+	Players             []Player
+	ResultLog           []Result
+	State               RoomState // ステートマシンの現在の状態
+	LastCorrectPlayerID int       //直前の正解者のID
+	StreakCount         int       //連続正解の回数
 }
 
 type GameBoard struct {
@@ -381,6 +383,9 @@ func (r *Room) ResetRoom() error {
 		r.Players[i].IsReady = false
 		r.Players[i].HasClosedResult = false
 	}
+	// 連続正解情報もリセット
+	r.LastCorrectPlayerID = 0
+	r.StreakCount = 0
 	return r.TransitionTo(StateWaitingForPlayers)
 }
 

@@ -1,6 +1,5 @@
 <template>
   <div :class="$style.container">
-    <TopBar :room="currentRoom || roomData[0]" />
     <div :class="$style.main">
       <div :class="$style.statistics">
         <TextMark text="score" bgColor="#ffdd44" />
@@ -10,32 +9,40 @@
       </div>
       <div :class="$style.right">
         <TextMark text="players" bgColor="#bb0000" :class="$style.playerMark" />
-        <OpponentInfo v-for="player in players" :key="player.name" :id="player.name" :score="player.score" />
+        <OpponentInfo
+          v-for="player in players"
+          :key="player.name"
+          :id="player.name"
+          :score="player.score"
+        />
       </div>
     </div>
     <div :class="$style.board">
-      <MainGameBoard v-model:board="board" />
+      <MainGameBoard
+        v-model:board="board"
+        :highlighted-numbers="highlightedNumbers"
+      />
     </div>
 
     <div :class="$style.inputbox">
-      <MathInput v-model:board="board" />
+      <MathInput
+        v-model:board="board"
+        v-model:current-expression="currentExpression"
+      />
     </div>
 
     <StartModal />
     <ResultModal />
-    <!-- Debug controls for WebSocket -->
-    <div style="position: fixed; bottom: 10px; left: 10px; display: flex; gap: 10px; flex-wrap: wrap">
-      <button @click="debugStartGame" style="padding: 5px 10px; font-size: 12px">Debug Start Game</button>
-      <button @click="debugUpdateBoard" style="padding: 5px 10px; font-size: 12px">Debug Update Board</button>
-      <button @click="debugStartCountdown(3)" style="padding: 5px 10px; font-size: 12px">Debug Countdown</button>
-    </div>
+
+    <TopBar v-model:room="roomData[0]" />
+    <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
+    <button @click="debugStartCountdown(3)">Debug Countdown</button>
     <CountDown v-if="countdown >= 0" :time="countdown" />
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, watch, provide, onMounted, onBeforeUnmount } from "vue";
-import { useRoute } from "vue-router";
+import { ref, watch, provide, computed } from "vue";
 import { roomData } from "@/lib/sample-data";
 import {
   type WebSocketEvent,
@@ -301,6 +308,22 @@ async function debugStartCountdown(startNum: number) {
   countdown.value = -1;
   debugStartGame(); // カウントダウン後にゲーム開始
 }
+
+const board = ref([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8]);
+const currentExpression = ref("");
+
+// 現在の数式に含まれる数字を抽出してハイライト対象を決定
+const highlightedNumbers = computed(() => {
+  if (!currentExpression.value) return [];
+
+  // 数式から数字のみを抽出（演算子や括弧を除外）
+  const numbersInExpression = currentExpression.value.match(/[1-9]/g) || [];
+
+  // 重複を除去して数値に変換
+  return [...new Set(numbersInExpression.map(Number))];
+});
+
+watch(board, (newBoard: number[]) => console.log("Board updated:", newBoard));
 </script>
 
 <style module>

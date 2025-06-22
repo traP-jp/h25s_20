@@ -107,7 +107,6 @@ onUnmounted(() => {
 
 watch(expression, async (newValue) => {
   if (!board.value) return;
-
   // 一時的に checkMath で検証のみ行う（board は更新しない）
   const tempBoard = [...board.value]; // 元のboardのコピーを作成
   const result = checkMath(tempBoard, newValue);
@@ -165,7 +164,9 @@ const addSymbol = (value: string) => {
       expression.value += value;
       return;
     } else if (/[+\-*/]/.test(value)) {
-      expression.value = expression.value.slice(0, -1) + value;
+      if (expression.value.length !== 0) {
+        expression.value = expression.value.slice(0, -1) + value;
+      }
       return;
     }
   } else if (last === "(") {
@@ -222,6 +223,7 @@ const clearAll = () => {
 }
 
 .preview {
+  font-family: "M PLUS Code Latin", sans-serif;
   letter-spacing: 5px;
   border-radius: 8px;
   padding: 5px;

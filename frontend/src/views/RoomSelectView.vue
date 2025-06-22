@@ -1,10 +1,14 @@
 <template>
   <div :class="$style.container">
-    <div :class="$style.header">Select a Room</div>
-    <div :class="$style.rooms" v-if="roomData.length > 0">
-      <RoomButton v-for="room in roomData" :key="room.roomId" :room="room" @click="handleRoomClick(room)" />
+    <img :class="$style.logo" src="/logo.svg" alt="Logo" />
+    <div :class="$style.header">部屋を選んで入室</div>
+    <div :class="$style.rooms">
+      <RoomButton v-for="room in roomData" :key="room.id" :room="room" @click="handleRoomClick(room)" />
     </div>
-    <div :class="$style.empty" v-else>No rooms available</div>
+
+    <button :class="$style.button" @click="onClick">
+      プレイ方法を確認
+    </button>
   </div>
 </template>
 
@@ -72,19 +76,46 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   justify-content: center;
+  align-items: center;
+}
+
+.logo {
+  width: 300px;
+  margin-bottom: 26px;
 }
 
 .header {
   font-size: 24px;
   font-weight: bold;
   text-align: center;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
 .rooms {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 12px;
   margin: 10px;
+  margin-bottom: 30px;
+  width: 100%;
+}
+
+.button {
+  width: 220px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  background-color: #28a745;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+  text-align: center; text-align: center;
+}
+
+.button:hover {
+  background-color: #218838; background-color: #218838;
 }
 
 .empty {

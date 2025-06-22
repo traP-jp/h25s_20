@@ -29,6 +29,11 @@ const router = createRouter({
       component: () => import("@/views/ApiTestView.vue"),
       meta: { showLayout: false },
     },
+    {
+      path: "/help",
+      component: () => import("@/views/HelpView.vue"),
+      meta: { showLayout: true },
+    },
   ],
 });
 

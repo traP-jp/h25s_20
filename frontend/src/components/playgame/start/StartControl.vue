@@ -1,13 +1,34 @@
 <template>
-  <button :class="$style.mainBtn" @click="onClickMain" :disabled="isBtnDisabled">{{ BtnMsg }}</button>
-  <button v-show="!isBtnDisabled" :class="$style.quitBtn" @click="onClickQuit">部屋から抜ける</button>
-  <button v-show="isBtnDisabled" :class="$style.cancelBtn" @click="onClickCancel">キャンセル</button>
+  <div :class="$style.container">
+    <button
+      :class="$style.mainBtn"
+      @click="onClickMain"
+      :disabled="isBtnDisabled"
+    >
+      {{ BtnMsg }}
+    </button>
+    <button
+      v-show="!isBtnDisabled"
+      :class="$style.quitBtn"
+      @click="onClickQuit"
+    >
+      部屋から抜ける
+    </button>
+    <button
+      v-show="isBtnDisabled"
+      :class="$style.cancelBtn"
+      @click="onClickCancel"
+    >
+      キャンセル
+    </button>
+  </div>
 </template>
+
 <script setup lang="ts">
 import { ref, inject } from "vue";
 
-const showStartModal = inject('showStartModal');
-const showResultModal = inject('showResultModal');
+const showStartModal = inject("showStartModal");
+const showResultModal = inject("showResultModal");
 
 const BtnMsg = ref("準備OK!");
 const isBtnDisabled = ref(false);
@@ -35,6 +56,29 @@ const onClickCancel = () => {
 
 <style module>
 .container {
-  ;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background-color: white;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.mainBtn {
+  transform: scale(1.5);
+  margin: 20px 0;
+}
+
+.quitBtn {
+  align-self: flex-start;
+}
+
+.cancelBtn {
+  align-self: flex-start;
 }
 </style>

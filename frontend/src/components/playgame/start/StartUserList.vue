@@ -11,8 +11,6 @@
       :isReady="player.isReady"
     />
   </div>
-
-
 </template>
 <script setup lang="ts">
 import StartUser from "@/components/playgame/start/StartUser.vue";
@@ -27,6 +25,8 @@ const players = [
 
 <style module>
 .container {
+  margin-top: 40px;
+  display: 100%;
   display: flex;
   flex-direction: column;
   align-items: center;

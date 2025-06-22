@@ -1,12 +1,15 @@
 <template>
-  <button :class="$style.mainBtn" @click="onClickMain" >Got it!</button>
+  <div :class="$style.container">
+    <button :class="$style.mainBtn" @click="onClickMain">Got it!</button>
+    <!-- Placeholder buttons for layout consistency -->
+    <div :class="$style.placeholder"></div>
+  </div>
 </template>
 <script setup lang="ts">
+import { inject } from "vue";
 
-import { ref, inject } from "vue";
-
-const showStartModal = inject('showStartModal');
-const showResultModal = inject('showResultModal');
+const showStartModal = inject("showStartModal") as any;
+const showResultModal = inject("showResultModal") as any;
 
 const onClickMain = () => {
   // send an event to backend
@@ -14,11 +17,30 @@ const onClickMain = () => {
   showResultModal.value = false;
   showStartModal.value = true;
 };
-
 </script>
 
 <style module>
 .container {
-  ;
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  background-color: white;
+  padding: 20px;
+  z-index: 1000;
+}
+
+.mainBtn {
+  transform: scale(1.5);
+  margin: 20px 0;
+}
+
+.placeholder {
+  height: 40px; /* Same height as quit/cancel buttons */
+  align-self: flex-start;
 }
 </style>
