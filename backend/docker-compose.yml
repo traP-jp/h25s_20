@@ -11,6 +11,7 @@ services:
       NS_MARIADB_USER: user
       NS_MARIADB_PASSWORD: password
       NS_MARIADB_DATABASE: template_db
+      JWT_SECRET: b6b6424fbcf066b80d45b454e677f730097279e6d2bd5ab6
     volumes:
       - .:/app
     depends_on:

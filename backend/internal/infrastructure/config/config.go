@@ -9,6 +9,7 @@ type Config struct {
 	DBPassword string
 	DBName     string
 	Port       string
+	JWTSecret  string
 }
 
 func LoadConfig() *Config {
@@ -19,6 +20,7 @@ func LoadConfig() *Config {
 		DBPassword: getEnv("NS_MARIADB_PASSWORD", "password"),
 		DBName:     getEnv("NS_MARIADB_DATABASE", "template_db"),
 		Port:       getEnv("PORT", "8080"),
+		JWTSecret:  getEnv("JWT_SECRET", "your-secret-key-here"),
 	}
 }
 
