@@ -126,7 +126,7 @@ const backspace = () => {
 <style module>
 .wrapper {
   width: 100%;
-  border: 2px solid red;
+  margin-bottom: 20px;
 }
 
 .preview {

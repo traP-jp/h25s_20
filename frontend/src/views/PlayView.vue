@@ -58,8 +58,7 @@ watch(board, (newBoard) => {
 <style module>
 .container {
   width: 360px;
-  height: 60vh;
-  border: 1px solid red;
+  height: 100vh;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
