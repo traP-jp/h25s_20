@@ -27,6 +27,7 @@ function close() {
   z-index: 3;
 }
 .modal {
+  margin-top: 40px;
   background: #fff;
   padding: 1.5rem;
   width: 100%;

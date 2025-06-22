@@ -1,13 +1,15 @@
 <template>
-  <button :class="$style.mainBtn" @click="onClickMain" :disabled="isBtnDisabled">{{ BtnMsg }}</button>
-  <button v-show="!isBtnDisabled" :class="$style.quitBtn" @click="onClickQuit">部屋から抜ける</button>
-  <button v-show="isBtnDisabled" :class="$style.cancelBtn" @click="onClickCancel">キャンセル</button>
+  <div :class="$style.container">
+    <button :class="$style.mainBtn" @click="onClickMain" :disabled="isBtnDisabled">{{ BtnMsg }}</button>
+    <button v-show="!isBtnDisabled" :class="$style.quitBtn" @click="onClickQuit">部屋から抜ける</button>
+    <button v-show="isBtnDisabled" :class="$style.cancelBtn" @click="onClickCancel">キャンセル</button>
+  </div>
 </template>
 <script setup lang="ts">
 import { ref, inject } from "vue";
 
-const showStartModal = inject('showStartModal');
-const showResultModal = inject('showResultModal');
+const showStartModal = inject("showStartModal");
+const showResultModal = inject("showResultModal");
 
 const BtnMsg = ref("準備OK!");
 const isBtnDisabled = ref(false);
@@ -35,6 +37,8 @@ const onClickCancel = () => {
 
 <style module>
 .container {
-  ;
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
 }
 </style>
