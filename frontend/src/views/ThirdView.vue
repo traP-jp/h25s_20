@@ -1,344 +1,86 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
+import { useWebSocket } from "@/lib/websocket";
 
-// WebSocketイベントの型定義
-interface WebSocketEvent {
-  event: string;
-  content: EventContent;
-}
+// 接続設定
+const wsUrl = "ws://localhost:8080/ws?username=debug_user";
 
-interface BaseEventContent {
-  user_id?: number;
-  user_name?: string;
-  room_id?: number;
-  message?: string;
-  timestamp?: number;
-}
+// WebSocket接続の初期化
+const {
+  isConnected,
+  isConnecting,
+  connectionError,
+  messages,
+  connect,
+  manualConnect,
+  disconnect,
+  clearMessages,
+  destroy,
+  getReconnectAttempts,
+  getMaxReconnectAttempts,
+} = useWebSocket(wsUrl);
 
-interface ConnectionEventContent extends BaseEventContent {
-  client_id: string;
-}
-
-interface PlayerEventContent extends BaseEventContent {}
-
-interface BoardData {
-  content: number[];
-  version: number;
-  size: number;
-}
-
-interface BoardUpdateEventContent extends BaseEventContent {
-  board: BoardData;
-  gain_score: number;
-}
-
-interface CountdownEventContent extends BaseEventContent {
-  count?: number;
-  countdown?: number;
-}
-
-type EventContent = 
-  | ConnectionEventContent 
-  | PlayerEventContent 
-  | BoardUpdateEventContent 
-  | CountdownEventContent 
-  | BaseEventContent;
-
-// WebSocketイベント名の定数
-const WS_EVENTS = {
-  CONNECTION: 'connection',
-  PLAYER_JOINED: 'player_joined',
-  PLAYER_READY: 'player_ready',
-  PLAYER_CANCELED: 'player_canceled',
-  PLAYER_LEFT: 'player_left',
-  GAME_STARTED: 'game_started',
-  GAME_START: 'game_start',
-  COUNTDOWN_START: 'countdown_start',
-  COUNTDOWN: 'countdown',
-  BOARD_UPDATED: 'board_updated',
-  RESULT_CLOSED: 'result_closed',
-  GAME_ENDED: 'game_ended'
-} as const;
-
-// リアクティブな状態
-const isConnected = ref(false);
-const isConnecting = ref(false);
-const ws = ref<WebSocket | null>(null);
-const messages = ref<string[]>([]);
-const connectionError = ref<string | null>(null);
+// 再接続情報の取得用
 const reconnectAttempts = ref(0);
-const maxReconnectAttempts = 5;
+const maxReconnectAttempts = ref(5);
 
-// 接続先の選択
-const wsEndpoint = ref<'local' | 'docker'>('local');
-const customUsername = ref('debug_user');
-
-// WebSocket接続関数
-const connectWebSocket = () => {
-  if (isConnecting.value || (ws.value && ws.value.readyState === WebSocket.OPEN)) {
-    return;
-  }
-
-  isConnecting.value = true;
-  connectionError.value = null;
-
-  // デバッグユーザーでの接続（本番では適切なusernameを使用）
-  const wsUrl = "ws://localhost:8080/ws?username=debug_user";
-  
-  try {
-    ws.value = new WebSocket(wsUrl);
-
-    // 接続開始のタイムアウト設定
-    const connectTimeout = setTimeout(() => {
-      if (ws.value && ws.value.readyState === WebSocket.CONNECTING) {
-        ws.value.close();
-        connectionError.value = "接続タイムアウト";
-        isConnecting.value = false;
-      }
-    }, 10000); // 10秒でタイムアウト
-
-    ws.value.onopen = () => {
-      clearTimeout(connectTimeout);
-      console.log("WebSocket接続が確立されました");
-      isConnected.value = true;
-      isConnecting.value = false;
-      reconnectAttempts.value = 0;
-      connectionError.value = null;
-      
-      addMessage("✅ WebSocket接続が確立されました");
-    };
-
-    ws.value.onmessage = (event) => {
-      try {
-        const wsEvent: WebSocketEvent = JSON.parse(event.data);
-        handleWebSocketEvent(wsEvent);
-      } catch (error) {
-        console.error("WebSocketメッセージの解析に失敗:", error);
-        addMessage(`❌ メッセージ解析エラー: ${event.data}`);
-      }
-    };
-
-    ws.value.onerror = (event) => {
-      clearTimeout(connectTimeout);
-      console.error("WebSocketエラー:", event);
-      connectionError.value = "WebSocket接続エラーが発生しました";
-      isConnecting.value = false;
-      
-      addMessage("❌ WebSocket接続エラー");
-    };
-
-    ws.value.onclose = (event) => {
-      clearTimeout(connectTimeout);
-      console.log(`WebSocket接続が閉じられました - Code: ${event.code}, Reason: ${event.reason}`);
-      isConnected.value = false;
-      isConnecting.value = false;
-      
-      if (event.code !== 1000) { // 正常終了以外の場合
-        connectionError.value = `接続が閉じられました (Code: ${event.code})`;
-        addMessage(`⚠️ 接続が閉じられました (Code: ${event.code})`);
-        
-        // 自動再接続を試行
-        attemptReconnect();
-      } else {
-        addMessage("🔌 WebSocket接続が正常に閉じられました");
-      }
-    };
-
-  } catch (error) {
-    console.error("WebSocket接続の作成に失敗:", error);
-    connectionError.value = "WebSocket接続の作成に失敗しました";
-    isConnecting.value = false;
-    addMessage("❌ WebSocket接続の作成に失敗");
-  }
+// 再接続情報を定期的に更新
+const updateReconnectInfo = () => {
+  reconnectAttempts.value = getReconnectAttempts();
+  maxReconnectAttempts.value = getMaxReconnectAttempts();
 };
 
-// WebSocketイベントハンドラー
-const handleWebSocketEvent = (wsEvent: WebSocketEvent) => {
-  console.log("受信イベント:", wsEvent);
-  
-  switch (wsEvent.event) {
-    case WS_EVENTS.CONNECTION:
-      const connectionContent = wsEvent.content as ConnectionEventContent;
-      addMessage(`🔗 接続確立: ClientID: ${connectionContent.client_id}, UserID: ${connectionContent.user_id}`);
-      break;
-      
-    case WS_EVENTS.PLAYER_JOINED:
-      const joinedContent = wsEvent.content as PlayerEventContent;
-      addMessage(`👤 プレイヤー参加: ${joinedContent.user_name} (ID: ${joinedContent.user_id}) がルーム ${joinedContent.room_id} に参加`);
-      break;
-      
-    case WS_EVENTS.PLAYER_READY:
-      const readyContent = wsEvent.content as PlayerEventContent;
-      addMessage(`✅ プレイヤー準備完了: ${readyContent.user_name} が準備完了`);
-      break;
-      
-    case WS_EVENTS.PLAYER_CANCELED:
-      const canceledContent = wsEvent.content as PlayerEventContent;
-      addMessage(`❌ プレイヤー準備キャンセル: ${canceledContent.user_name} が準備をキャンセル`);
-      break;
-      
-    case WS_EVENTS.PLAYER_LEFT:
-      const leftContent = wsEvent.content as PlayerEventContent;
-      addMessage(`👋 プレイヤー退出: ${leftContent.user_name} がルームから退出`);
-      break;
-      
-    case WS_EVENTS.GAME_STARTED:
-      const gameStartedContent = wsEvent.content as BaseEventContent;
-      addMessage(`🎮 ゲーム開始: ${gameStartedContent.message}`);
-      break;
-      
-    case WS_EVENTS.COUNTDOWN_START:
-      const countdownStartContent = wsEvent.content as CountdownEventContent;
-      addMessage(`⏰ カウントダウン開始: ${countdownStartContent.countdown}秒`);
-      break;
-      
-    case WS_EVENTS.COUNTDOWN:
-      const countdownContent = wsEvent.content as CountdownEventContent;
-      addMessage(`⏱️ カウントダウン: ${countdownContent.count}`);
-      break;
-      
-    case WS_EVENTS.BOARD_UPDATED:
-      const boardContent = wsEvent.content as BoardUpdateEventContent;
-      addMessage(`📋 ボード更新: ${boardContent.user_name} がスコア ${boardContent.gain_score} 獲得 (Version: ${boardContent.board.version})`);
-      break;
-      
-    case WS_EVENTS.GAME_ENDED:
-      const gameEndedContent = wsEvent.content as BaseEventContent;
-      addMessage(`🏁 ゲーム終了: ${gameEndedContent.message}`);
-      break;
-      
-    default:
-      addMessage(`📨 未知のイベント: ${wsEvent.event} - ${JSON.stringify(wsEvent.content)}`);
-  }
-};
-
-// メッセージ追加関数
-const addMessage = (message: string) => {
-  const timestamp = new Date().toLocaleTimeString();
-  messages.value.push(`[${timestamp}] ${message}`);
-  
-  // メッセージ数を制限（パフォーマンス対策）
-  if (messages.value.length > 100) {
-    messages.value = messages.value.slice(-50);
-  }
-};
-
-// 再接続試行
-const attemptReconnect = () => {
-  if (reconnectAttempts.value >= maxReconnectAttempts) {
-    addMessage("❌ 最大再接続試行回数に達しました");
-    return;
-  }
-  
-  reconnectAttempts.value++;
-  const delay = Math.min(1000 * Math.pow(2, reconnectAttempts.value - 1), 30000); // 指数バックオフ（最大30秒）
-  
-  addMessage(`🔄 ${delay/1000}秒後に再接続を試行します... (${reconnectAttempts.value}/${maxReconnectAttempts})`);
-  
-  setTimeout(() => {
-    connectWebSocket();
-  }, delay);
-};
-
-// 手動接続関数
-const manualConnect = () => {
-  if (ws.value) {
-    ws.value.close();
-  }
-  reconnectAttempts.value = 0;
-  connectWebSocket();
-};
-
-// 切断関数
-const disconnect = () => {
-  if (ws.value) {
-    ws.value.close(1000, "ユーザーによる切断");
-  }
-  reconnectAttempts.value = maxReconnectAttempts; // 自動再接続を停止
-};
-
-// メッセージクリア
-const clearMessages = () => {
-  messages.value = [];
-};
+// 定期的に再接続情報を更新
+setInterval(updateReconnectInfo, 1000);
 
 // ライフサイクル
 onMounted(() => {
-  connectWebSocket();
+  connect();
 });
 
 onBeforeUnmount(() => {
-  if (ws.value) {
-    ws.value.close(1000, "コンポーネントアンマウント");
-  }
+  destroy();
 });
 </script>
 
 <template>
   <div class="websocket-test">
     <h1>WebSocket接続テスト</h1>
-    
+
     <!-- 接続状態表示 -->
     <div class="connection-status">
-      <div v-if="isConnecting" class="status connecting">
-        🔄 接続中...
-      </div>
-      <div v-else-if="isConnected" class="status connected">
-        ✅ 接続済み
-      </div>
-      <div v-else class="status disconnected">
-        ❌ 未接続
-      </div>
-      
+      <div v-if="isConnecting" class="status connecting">🔄 接続中...</div>
+      <div v-else-if="isConnected" class="status connected">✅ 接続済み</div>
+      <div v-else class="status disconnected">❌ 未接続</div>
+
       <div v-if="connectionError" class="error">
         {{ connectionError }}
       </div>
-      
+
       <div v-if="reconnectAttempts > 0" class="reconnect-info">
         再接続試行: {{ reconnectAttempts }}/{{ maxReconnectAttempts }}
       </div>
     </div>
-    
+
     <!-- 操作ボタン -->
     <div class="controls">
-      <button 
-        @click="manualConnect" 
-        :disabled="isConnecting"
-        class="btn btn-connect"
-      >
-        {{ isConnecting ? '接続中...' : '接続' }}
+      <button @click="manualConnect" :disabled="isConnecting" class="btn btn-connect">
+        {{ isConnecting ? "接続中..." : "接続" }}
       </button>
-      
-      <button 
-        @click="disconnect" 
-        :disabled="!isConnected && !isConnecting"
-        class="btn btn-disconnect"
-      >
-        切断
-      </button>
-      
-      <button 
-        @click="clearMessages"
-        class="btn btn-clear"
-      >
-        ログクリア
-      </button>
+
+      <button @click="disconnect" :disabled="!isConnected && !isConnecting" class="btn btn-disconnect">切断</button>
+
+      <button @click="clearMessages" class="btn btn-clear">ログクリア</button>
     </div>
-    
+
     <!-- メッセージ表示 -->
     <div class="messages">
       <h3>受信メッセージ ({{ messages.length }}件)</h3>
       <div class="message-list">
-        <div 
-          v-for="(msg, idx) in messages.slice().reverse()" 
-          :key="idx" 
-          class="message"
-        >
+        <div v-for="(msg, idx) in messages.slice().reverse()" :key="idx" class="message">
           {{ msg }}
         </div>
-        <div v-if="messages.length === 0" class="no-messages">
-          メッセージはありません
-        </div>
+        <div v-if="messages.length === 0" class="no-messages">メッセージはありません</div>
       </div>
     </div>
   </div>
@@ -349,7 +91,7 @@ onBeforeUnmount(() => {
   max-width: 800px;
   margin: 0 auto;
   padding: 20px;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
 }
 
 .connection-status {
@@ -461,7 +203,7 @@ onBeforeUnmount(() => {
 .message {
   padding: 8px 0;
   border-bottom: 1px solid #eee;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+  font-family: "Monaco", "Menlo", "Ubuntu Mono", monospace;
   font-size: 13px;
   line-height: 1.4;
   word-break: break-all;
@@ -483,11 +225,11 @@ onBeforeUnmount(() => {
   .websocket-test {
     padding: 10px;
   }
-  
+
   .controls {
     flex-direction: column;
   }
-  
+
   .btn {
     width: 100%;
   }
