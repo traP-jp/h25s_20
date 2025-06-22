@@ -25,8 +25,16 @@
       </div>
       <div :class="$style.tens">
         <div :class="$style.symbolRow">
-          <MathInputButton icon="mdi:code-parentheses" @click="addParentheses" />
-          <MathInputButton icon="mdi:backspace-outline" @click="backspace" />
+          <MathInputButton
+            icon="mdi:code-parentheses"
+            @click="addParentheses"
+          />
+          <MathInputButton
+            icon="mdi:backspace-outline"
+            @click="backspace"
+            @long-press="clearAll"
+            :show-long-press-style="true"
+          />
         </div>
         <div :class="$style.symbolRow">
           <MathInputButton icon="mdi:plus" @click="addSymbol('+')" />
@@ -62,7 +70,10 @@ const viewExpression = computed(() => {
 });
 
 const addSymbol = (value: string) => {
-  const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
+  const last =
+    expression.value.length > 0
+      ? expression.value[expression.value.length - 1]
+      : "+";
 
   if (/[1-9]/.test(last)) {
     if (/[1-9]/.test(value)) {
@@ -108,7 +119,10 @@ const addParentheses = () => {
   console.log("openParens: ", openParens);
   console.log("closeParens: ", closeParens);
 
-  const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
+  const last =
+    expression.value.length > 0
+      ? expression.value[expression.value.length - 1]
+      : "+";
   if (/[1-9]/.test(last) || last === ")") {
     if (openParens > closeParens) {
       expression.value += ")";
@@ -124,6 +138,10 @@ const addParentheses = () => {
 
 const backspace = () => {
   expression.value = expression.value.slice(0, -1);
+};
+
+const clearAll = () => {
+  expression.value = "";
 };
 </script>
 
