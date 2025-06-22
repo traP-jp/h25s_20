@@ -43,7 +43,8 @@ func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
 
 	// WebSocket接続をアップグレード
 	conn, err := websocket.Accept(c.Response().Writer, c.Request(), &websocket.AcceptOptions{
-		Subprotocols: []string{"echo"},
+		Subprotocols:   []string{"echo"},
+		OriginPatterns: []string{"http://localhost:5173"},
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to upgrade WebSocket connection")
