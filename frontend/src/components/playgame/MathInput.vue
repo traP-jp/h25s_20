@@ -1,8 +1,8 @@
 <template>
   <div :class="$style.wrapper">
     <!-- プレビュー -->
-    <div :class="[$style.preview]">
-      {{ expression }}
+    <div :class="$style.preview">
+      {{ viewExpression }}
     </div>
 
     <div :class="$style.container">
@@ -42,7 +42,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from "vue";
+import { computed, ref } from "vue";
 import MathInputButton from "./MathInputButton.vue";
 import { defineModel, watch } from "vue";
 import { checkMath } from "@/lib/board-update";
@@ -55,6 +55,10 @@ watch(expression, (newValue) => {
   const result = checkMath(board.value, newValue);
   board.value = result["board"];
   expression.value = result["input"];
+});
+
+const viewExpression = computed(() => {
+  return expression.value.replace("-", "−").replace("*", "×").replace("/", "÷");
 });
 
 const addSymbol = (value: string) => {
@@ -126,14 +130,14 @@ const backspace = () => {
 <style module>
 .wrapper {
   width: 100%;
-  border: 2px solid red;
+  margin-bottom: 20px;
 }
 
 .preview {
   letter-spacing: 5px;
   border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
+  padding: 5px;
+  margin-bottom: 5px;
   font-size: 30px;
   font-weight: 500;
   text-align: center;
@@ -145,7 +149,7 @@ const backspace = () => {
 }
 
 .container {
-  margin: 30px auto 0 auto;
+  margin: 0 auto;
   width: 300px;
   display: flex;
   justify-content: space-between;
