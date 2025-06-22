@@ -23,6 +23,11 @@ const router = createRouter({
       component: () => import("@/views/PlayView.vue"),
       meta: { showLayout: true },
     },
+    {
+      path: "/api-test",
+      component: () => import("@/views/ApiTestView.vue"),
+      meta: { showLayout: false },
+    },
   ],
 });
 
