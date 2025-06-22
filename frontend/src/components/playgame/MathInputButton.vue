@@ -20,19 +20,19 @@ defineEmits<{
 
 <style module>
 .container {
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border-radius: 5px;
   display: flex;
   justify-content: center;
   align-items: center;
-  background-color: #446688;
+  background-color: #f0f0f0;
   cursor: pointer;
   transition: all 0.2s ease;
 }
 
 .container:hover {
-  background-color: #5577aa;
+  background-color: #88aaff;
   transform: scale(1.05);
 }
 
@@ -41,13 +41,13 @@ defineEmits<{
 }
 
 .text {
-  color: white;
+  color: black;
   font-size: 28px;
   font-weight: bold;
 }
 
 .icon {
-  color: white;
+  color: black;
   font-size: 32px;
 }
 </style>
