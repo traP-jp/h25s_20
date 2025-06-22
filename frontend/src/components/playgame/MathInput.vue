@@ -199,6 +199,7 @@ const clearAll = () => {
 }
 
 .preview {
+  font-family: "M PLUS Code Latin", sans-serif;
   letter-spacing: 5px;
   border-radius: 8px;
   padding: 5px;
