@@ -31,7 +31,32 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	// Add middleware
 	e.Use(middleware.Logger())
 	e.Use(middleware.Recover())
-	e.Use(middleware.CORS())
+
+	// CORS設定を詳細に設定（WebSocket接続用）
+	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
+		AllowOrigins: []string{
+			"http://localhost:5173",              // フロントエンド開発サーバー
+			"http://localhost:3000",              // 代替フロントエンドポート
+			"http://app.frontend.orb.local:5173", // Docker環境用
+		},
+		AllowMethods: []string{
+			echo.GET, echo.HEAD, echo.PUT, echo.PATCH,
+			echo.POST, echo.DELETE, echo.OPTIONS,
+		},
+		AllowHeaders: []string{
+			echo.HeaderOrigin,
+			echo.HeaderContentType,
+			echo.HeaderAccept,
+			echo.HeaderAuthorization,
+			"Sec-WebSocket-Extensions",
+			"Sec-WebSocket-Key",
+			"Sec-WebSocket-Protocol",
+			"Sec-WebSocket-Version",
+			"Connection",
+			"Upgrade",
+		},
+		AllowCredentials: true,
+	}))
 
 	// Load OpenAPI spec (use embedded file for buildpack compatibility)
 	loader := openapi3.NewLoader()

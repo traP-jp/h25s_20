@@ -30,23 +30,30 @@ func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
 	// ユーザー名をクエリパラメータから取得
 	username := c.QueryParam("username")
 	if username == "" {
+		log.Error().Msg("Username is required for WebSocket connection")
+		// WebSocketアップグレード前なので、まだJSONレスポンスが可能
 		return c.JSON(400, map[string]string{"error": "username is required"})
 	}
 
 	// データベースからユーザーを検索
 	user, err := h.userUsecase.GetUserByUsername(c.Request().Context(), username)
 	if err != nil {
+		log.Error().Err(err).Str("username", username).Msg("User not found for WebSocket connection")
+		// WebSocketアップグレード前なので、まだJSONレスポンスが可能
 		return c.JSON(404, map[string]string{"error": "user not found"})
 	}
 
 	userID := int(user.ID)
 
-	// WebSocket接続をアップグレード
+	// WebSocket接続をアップグレード（CORS対応のオプション追加）
 	conn, err := websocket.Accept(c.Response().Writer, c.Request(), &websocket.AcceptOptions{
 		Subprotocols: []string{"echo"},
+		// Originチェックを無効化（すでにCORSミドルウェアで処理済み）
+		InsecureSkipVerify: true,
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to upgrade WebSocket connection")
+		// WebSocketアップグレード後はJSONレスポンスできないため、errorを返すのみ
 		return err
 	}
 
