@@ -1,8 +1,14 @@
 <template>
 
-<span v-for="n in props.gold" :key="n" :class="$style.gold">●</span>
-<span v-for="n in props.silver" :key="n" :class="$style.silver">●</span>
-<span v-for="n in props.bronze" :key="n" :class="$style.bronze">●</span>
+<span v-for="n in props.gold" :key="'gold-' + n" :class="$style.gold">
+    <img :class="$style.gold" src="/icons/gold.svg" />
+  </span>
+  <span v-for="n in props.silver" :key="'silver-' + n" :class="$style.silver">
+    <img :class="$style.silver" src="/icons/silver.svg" />
+  </span>
+  <span v-for="n in props.bronze" :key="'bronze-' + n" :class="$style.bronze">
+    <img :class="$style.bronze" src="/icons/bronze.svg" />
+  </span>
 
 </template>
 
@@ -18,17 +24,19 @@ const props = defineProps<{
 
 <style module>
 
-.gold {
-  color: gold;
+.gold img {
+  width: 30px;
+  height: 30px;
 }
 
-.silver {
-  color: silver;
+.silver img {
+  width: 30px;
+  height: 30px;
 }
 
-.bronze {
-  color: #cd7f32; /* ブロンズの色 */
+.bronze img {
+  width: 30px;
+  height: 30px;
 }
-
 
 </style>
