@@ -3,7 +3,7 @@ import { computed, ref, watch } from "vue";
 
 const props = defineProps<{ id?: string; size?: number }>();
 
-const currentImageUrl = ref("https://api.dicebear.com/9.x/thumbs/svg?seed=");
+const currentImageUrl = ref(`https://api.dicebear.com/9.x/thumbs/svg?seed=${props.id}`);
 const imageError = ref(false);
 
 const preloadImage = (url: string): Promise<void> => {

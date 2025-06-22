@@ -1,7 +1,7 @@
 <template>
   <div :class="$style.wrapper">
     <!-- プレビュー -->
-    <div :class="[$style.preview, { [$style.correct]: isCorrect }]">
+    <div :class="[$style.preview]">
       {{ expression }}
     </div>
 
@@ -42,42 +42,33 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import MathInputButton from "./MathInputButton.vue";
+import { defineModel, watch } from "vue";
+import { checkMath } from "@/lib/board-update";
 
 const expression = ref("");
+const board = defineModel<number[]>("board");
 
-import { solvePoland } from "@/lib/solver/solvePoland";
-import { encodePoland } from "@/lib/solver/encodePoland";
-
-const isCorrect = computed(() => {
-  try {
-    console.log(solvePoland(encodePoland(expression.value)));
-    return solvePoland(encodePoland(expression.value)) === "10";
-  } catch {
-    return false;
-  }
+watch(expression, (newValue) => {
+  if (!board.value) return;
+  const result = checkMath(board.value, newValue);
+  board.value = result["board"];
+  expression.value = result["input"];
 });
 
 const addSymbol = (value: string) => {
   const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
 
-  console.log("last is 1-9: ", /[1-9]/.test(last));
-  console.log("last is operator: ", /[+\-*/]/.test(last));
-  console.log("last is open parenthesis: ", last === "(");
-  console.log("last is close parenthesis: ", last === ")");
-
-  console.log("value is 1-9: ", /[1-9]/.test(value));
-  console.log("value is operator: ", /[+\-*/]/.test(value));
-  console.log("value is open parenthesis: ", value === "(");
-  console.log("value is close parenthesis: ", value === ")");
-
-  // last が 1 〜 9 までの数字ならば（0を含まない）
   if (/[1-9]/.test(last)) {
     if (/[1-9]/.test(value)) {
       expression.value = expression.value.slice(0, -1) + value;
       return;
     } else if (/[+\-*/]/.test(value)) {
+      const numberCount = (expression.value.match(/[1-9]/g) || []).length;
+      if (numberCount >= 4) {
+        return;
+      }
       expression.value += value;
       return;
     }
@@ -149,7 +140,7 @@ const backspace = () => {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: white;
+  color: black;
 }
 
 .correct {
