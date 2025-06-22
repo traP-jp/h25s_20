@@ -22,7 +22,7 @@ func (h *Handler) GetHealth(c echo.Context) error {
 }
 
 func NewHandler(dbChecker domain.DatabaseHealthChecker, wsManager *websocket.Manager, roomUsecase *usecase.RoomUsecase, userUsecase *usecase.UserUsecase, jwtService *auth.JWTService) *Handler {
-	wsHandler := NewWebSocketHandler(wsManager, roomUsecase)
+	wsHandler := NewWebSocketHandler(wsManager, roomUsecase, userUsecase)
 	return &Handler{
 		healthUsecase:    *usecase.NewHealthUsecase(dbChecker),
 		roomUsecase:      roomUsecase,
