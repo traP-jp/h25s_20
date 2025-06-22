@@ -33,8 +33,10 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	e.Use(middleware.Recover())
 	e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 		AllowOrigins: []string{
+			"http://localhost:5173",
+			"https://10ten.trap.show",
+			"http://10ten.trap.show",
 			"localhost:5173",
-			"10ten.trap.show",
 			"10ten.trap.show",
 		},
 		AllowHeaders: []string{echo.HeaderOrigin, echo.HeaderContentType, echo.HeaderAccept, echo.HeaderAuthorization},
