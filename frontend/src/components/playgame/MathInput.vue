@@ -74,26 +74,33 @@ const handleKeydown = (event: KeyboardEvent) => {
   }
 
   // 括弧キー
-  if (event.key === '(' || event.key === ')') {
+  if (event.key === "(" || event.key === ")") {
     addParentheses();
     event.preventDefault();
     return;
   }
 
   // バックスペースキー
-  if (event.key === 'Backspace') {
+  if (event.key === "Backspace") {
     backspace();
+    event.preventDefault();
+    return;
+  }
+
+  // ESCキーで全消し
+  if (event.key === "Escape") {
+    clearAll();
     event.preventDefault();
     return;
   }
 };
 
 onMounted(() => {
-  window.addEventListener('keydown', handleKeydown);
+  window.addEventListener("keydown", handleKeydown);
 });
 
 onUnmounted(() => {
-  window.removeEventListener('keydown', handleKeydown);
+  window.removeEventListener("keydown", handleKeydown);
 });
 
 watch(expression, (newValue) => {
