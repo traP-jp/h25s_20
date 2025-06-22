@@ -249,3 +249,35 @@ func (h *WebSocketHandler) SendRoomClosedEventToRoom(roomID int, message string)
 	event := wsManager.NewRoomClosedEvent(roomID, message)
 	h.manager.SendEventToRoom(roomID, event)
 }
+
+// 遅延削除システム管理機能
+
+// GetDisconnectedUsersInfo returns information about users scheduled for deletion
+func (h *WebSocketHandler) GetDisconnectedUsersInfo() map[int]*wsManager.UserState {
+	return h.manager.GetDisconnectedUsers()
+}
+
+// ForceDeleteDisconnectedUser immediately deletes a user from disconnected users
+func (h *WebSocketHandler) ForceDeleteDisconnectedUser(userID int) bool {
+	return h.manager.ForceDeleteUser(userID)
+}
+
+// IsUserDisconnected checks if a user is in the disconnected users list
+func (h *WebSocketHandler) IsUserDisconnected(userID int) bool {
+	return h.manager.IsUserDisconnected(userID)
+}
+
+// GetDeleteTimeout returns the current delete timeout duration
+func (h *WebSocketHandler) GetDeleteTimeout() time.Duration {
+	return h.manager.GetDeleteTimeout()
+}
+
+// SetDeleteTimeout sets a new delete timeout duration
+func (h *WebSocketHandler) SetDeleteTimeout(timeout time.Duration) {
+	h.manager.SetDeleteTimeout(timeout)
+}
+
+// GetDisconnectedUserStats returns statistics about disconnected users
+func (h *WebSocketHandler) GetDisconnectedUserStats() map[string]interface{} {
+	return h.manager.GetDisconnectedUserStats()
+}
