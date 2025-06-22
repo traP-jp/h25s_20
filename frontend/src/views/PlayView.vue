@@ -1,6 +1,5 @@
 <template>
   <div :class="$style.container">
-    <TopBar v-model:room="roomData[0]" />
     <div :class="$style.main">
       <div :class="$style.statistics">
         <TextMark text="score" bgColor="#ffdd44" />
@@ -23,10 +22,10 @@
 
     <StartModal />
     <ResultModal />
+    <TopBar v-model:room="roomData[0]" />
     <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
     <button @click="debugStartCountdown(3)">Debug Countdown</button>
     <CountDown v-if="countdown >= 0" :time="countdown" />
-
   </div>
 </template>
 

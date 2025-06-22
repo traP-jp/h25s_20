@@ -1,37 +1,36 @@
 <template>
-  <div class="overlay" @click.self="close">
-    <div class="modal">
+  <div :class="$style.overlay" @click.self="close">
+    <div :class="$style.modal">
       <slot></slot>
     </div>
   </div>
 </template>
 
 <script setup lang="ts">
-const emit = defineEmits<{ (e: 'close'): void }>();
+const emit = defineEmits<{ (e: "close"): void }>();
 function close() {
-  emit('close');
+  emit("close");
 }
 </script>
 
-<style scoped>
+<style module>
 .overlay {
   position: fixed;
   top: 0;
   left: 0;
   width: 100%;
   height: 100%;
-  background-color: rgba(0,  0,  0,  0.5);
+  background-color: rgba(0, 0, 0, 0.5);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 3;
 }
 .modal {
   background: #fff;
   padding: 1.5rem;
-  border-radius: 8px;
-  width: 90%;
-  height: 90%;
+  width: 100%;
+  height: 100%;
   overflow: auto;
 }
 </style>
