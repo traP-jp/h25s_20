@@ -18,8 +18,16 @@
     </div>
     <MathInput v-model:board="board" />
 
-    <!-- <StartModal />
-    <ResultModal /> -->
+    <div :class="$style.inputbox">
+      <MathInput v-model:board="board" />
+    </div>
+
+    <StartModal />
+    <ResultModal />
+    <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
+    <button @click="debugStartCountdown(3)">Debug Countdown</button>
+    <CountDown v-if="countdown >= 0" :time="countdown" />
+
   </div>
 </template>
 
@@ -31,8 +39,11 @@ import TopBar from "@/components/playgame/TopBar.vue";
 import OpponentInfo from "@/components/playgame/OpponentInfo.vue";
 import MainGameBoard from "@/components/playgame/MainGameBoard.vue";
 import MathInput from "@/components/playgame/MathInput.vue";
+
+import MyInfo from "@/components/playgame/MyInfo.vue";
 import StartModal from "@/components/playgame/start/StartModal.vue";
 import ResultModal from "@/components/playgame/result/ResultModal.vue";
+import CountDown from "@/components/playgame/CountDown.vue";
 import TextMark from "@/components/TextMark.vue";
 
 const players = [
@@ -42,15 +53,23 @@ const players = [
 
 const showStartModal = ref(false);
 const showResultModal = ref(false);
+const countdown = ref(-1); // -1 means hide the countdown screen
 
 provide("showStartModal", showStartModal);
 provide("showResultModal", showResultModal);
 
+// デバック用 実際はwebsocketのコールバックからカウントダウンの更新をする
+async function debugStartCountdown(startNum: number) {
+  for (let i = startNum; i > 0; i--) {
+    countdown.value = i;
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+  }
+  countdown.value = -1;
+}
+
 const board = ref([1, 2, 3, 4, 5, 6, 7, 8, 1, 2, 3, 4, 5, 6, 7, 8]);
 
-watch(board, (newBoard) => {
-  console.log("Board updated:", newBoard);
-});
+watch(board, (newBoard: number[]) => console.log("Board updated:", newBoard));
 </script>
 
 <style module>
