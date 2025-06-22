@@ -3,9 +3,11 @@ package usecase
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/kaitoyama/kaitoyama-server-template/internal/domain"
 	"github.com/kaitoyama/kaitoyama-server-template/openapi/models"
+	"github.com/rs/zerolog/log"
 )
 
 type RoomUsecase struct {
@@ -89,6 +91,10 @@ func (r *RoomUsecase) AddPlayerToRoom(roomID int, player domain.Player) (*domain
 			return nil, fmt.Errorf("player with ID %d already exists in room %d", player.ID, roomID)
 		}
 	}
+
+	// 新しいプレイヤーの接続状態を初期化
+	player.IsConnected = true
+	player.LastSeenAt = nil
 
 	room.Players = append(room.Players, player)
 	return room, nil
@@ -320,4 +326,169 @@ func (r *RoomUsecase) ApplyFormulaWithVersion(roomID int, playerID int, formula 
 	}
 
 	return currentBoard, gainScore, nil
+}
+
+// SetPlayerDisconnected marks a player as disconnected but keeps them in the room
+func (r *RoomUsecase) SetPlayerDisconnected(roomID int, playerID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	// プレイヤーを見つけて切断状態に設定
+	playerFound := false
+	now := time.Now()
+	for i, player := range room.Players {
+		if player.ID == playerID {
+			room.Players[i].IsConnected = false
+			room.Players[i].LastSeenAt = &now
+			playerFound = true
+
+			log.Info().
+				Int("room_id", roomID).
+				Int("player_id", playerID).
+				Str("player_name", player.UserName).
+				Msg("Player marked as disconnected in room")
+			break
+		}
+	}
+
+	if !playerFound {
+		return nil, fmt.Errorf("player with ID %d not found in room %d", playerID, roomID)
+	}
+
+	return room, nil
+}
+
+// SetPlayerReconnected marks a player as reconnected
+func (r *RoomUsecase) SetPlayerReconnected(roomID int, playerID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	// プレイヤーを見つけて再接続状態に設定
+	playerFound := false
+	for i, player := range room.Players {
+		if player.ID == playerID {
+			room.Players[i].IsConnected = true
+			room.Players[i].LastSeenAt = nil
+			playerFound = true
+
+			log.Info().
+				Int("room_id", roomID).
+				Int("player_id", playerID).
+				Str("player_name", player.UserName).
+				Msg("Player reconnected to room")
+			break
+		}
+	}
+
+	if !playerFound {
+		return nil, fmt.Errorf("player with ID %d not found in room %d", playerID, roomID)
+	}
+
+	return room, nil
+}
+
+// RemoveDisconnectedPlayer removes a player who has been disconnected for too long
+func (r *RoomUsecase) RemoveDisconnectedPlayer(roomID int, playerID int) (*domain.Room, error) {
+	r.mutex.Lock()
+	defer r.mutex.Unlock()
+
+	room, exists := r.rooms[roomID]
+	if !exists {
+		return nil, fmt.Errorf("room with ID %d not found", roomID)
+	}
+
+	// プレイヤーを見つけて削除
+	playerFound := false
+	for i, player := range room.Players {
+		if player.ID == playerID && !player.IsConnected {
+			// スライスから削除
+			room.Players = append(room.Players[:i], room.Players[i+1:]...)
+			playerFound = true
+
+			log.Info().
+				Int("room_id", roomID).
+				Int("player_id", playerID).
+				Str("player_name", player.UserName).
+				Msg("Disconnected player permanently removed from room")
+			break
+		}
+	}
+
+	if !playerFound {
+		return nil, fmt.Errorf("disconnected player with ID %d not found in room %d", playerID, roomID)
+	}
+
+	// 参加者が0人になった場合、ルームをリセット
+	if len(room.Players) == 0 {
+		err := room.ResetRoom()
+		if err != nil {
+			// StateGameEndedでない場合は強制的にWaitingForPlayersに戻す
+			room.State = domain.StateWaitingForPlayers
+		}
+		// ゲームボードもリセット
+		room.GameBoards = []domain.GameBoard{domain.NewBoard()}
+		room.ResultLog = []domain.Result{}
+		room.IsOpened = true // ルームを再度開放
+	} else {
+		// まだプレイヤーがいる場合、READY状態をチェック（接続中のプレイヤーのみ）
+		if !r.areConnectedPlayersReady(room) && room.State == domain.StateAllReady {
+			room.TransitionTo(domain.StateWaitingForPlayers)
+		}
+	}
+
+	return room, nil
+}
+
+// GetDisconnectedPlayers returns all disconnected players in all rooms
+func (r *RoomUsecase) GetDisconnectedPlayers() map[int][]domain.Player {
+	r.mutex.RLock()
+	defer r.mutex.RUnlock()
+
+	disconnectedPlayers := make(map[int][]domain.Player)
+
+	for roomID, room := range r.rooms {
+		var roomDisconnected []domain.Player
+		for _, player := range room.Players {
+			if !player.IsConnected {
+				roomDisconnected = append(roomDisconnected, player)
+			}
+		}
+		if len(roomDisconnected) > 0 {
+			disconnectedPlayers[roomID] = roomDisconnected
+		}
+	}
+
+	return disconnectedPlayers
+}
+
+// areConnectedPlayersReady checks if all connected players are ready
+func (r *RoomUsecase) areConnectedPlayersReady(room *domain.Room) bool {
+	if len(room.Players) == 0 {
+		return false
+	}
+
+	connectedCount := 0
+	readyCount := 0
+
+	for _, player := range room.Players {
+		if player.IsConnected {
+			connectedCount++
+			if player.IsReady {
+				readyCount++
+			}
+		}
+	}
+
+	// 接続中のプレイヤーが1人以上いて、全員がREADY
+	return connectedCount > 0 && connectedCount == readyCount
 }

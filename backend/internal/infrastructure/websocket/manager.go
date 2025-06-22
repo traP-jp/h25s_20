@@ -4,10 +4,20 @@ import (
 	"context"
 	"encoding/json"
 	"sync"
+	"time"
 
 	"github.com/coder/websocket"
+	"github.com/kaitoyama/kaitoyama-server-template/internal/domain"
 	"github.com/rs/zerolog/log"
 )
+
+// ユーザーの状態情報を保存するための構造体
+type UserState struct {
+	UserID      int         `json:"user_id"`
+	RoomID      *int        `json:"room_id"`
+	LastSeenAt  time.Time   `json:"last_seen_at"`
+	DeleteTimer *time.Timer `json:"-"` // JSONには含めない
+}
 
 type Client struct {
 	ID     string
@@ -17,11 +27,21 @@ type Client struct {
 	Cancel context.CancelFunc
 }
 
+// RoomUsecaseのインターフェース定義（循環importを避けるため）
+type RoomUsecaseInterface interface {
+	SetPlayerDisconnected(roomID int, playerID int) (*domain.Room, error)
+	SetPlayerReconnected(roomID int, playerID int) (*domain.Room, error)
+	RemoveDisconnectedPlayer(roomID int, playerID int) (*domain.Room, error)
+}
+
 type Manager struct {
-	clients     map[string]*Client
-	userClients map[int]*Client   // UserID -> Client のマッピング
-	roomClients map[int][]*Client // RoomID -> []*Client のマッピング
-	mutex       sync.RWMutex
+	clients           map[string]*Client
+	userClients       map[int]*Client    // UserID -> Client のマッピング
+	roomClients       map[int][]*Client  // RoomID -> []*Client のマッピング
+	disconnectedUsers map[int]*UserState // 切断されたユーザーの状態を一時保存
+	mutex             sync.RWMutex
+	deleteTimeout     time.Duration        // ユーザー削除までのタイムアウト時間
+	roomUsecase       RoomUsecaseInterface // RoomUsecaseとの連携用
 }
 
 // 後方互換性のため残す（非推奨）
@@ -48,10 +68,26 @@ type BoardUpdateContent struct {
 
 func NewManager() *Manager {
 	return &Manager{
-		clients:     make(map[string]*Client),
-		userClients: make(map[int]*Client),
-		roomClients: make(map[int][]*Client),
+		clients:           make(map[string]*Client),
+		userClients:       make(map[int]*Client),
+		roomClients:       make(map[int][]*Client),
+		disconnectedUsers: make(map[int]*UserState),
+		deleteTimeout:     30 * time.Second, // デフォルト30秒後に削除
 	}
+}
+
+// NewManagerWithTimeout creates a new Manager with custom delete timeout
+func NewManagerWithTimeout(timeout time.Duration) *Manager {
+	manager := NewManager()
+	manager.deleteTimeout = timeout
+	return manager
+}
+
+// SetRoomUsecase sets the room usecase for disconnection handling
+func (m *Manager) SetRoomUsecase(roomUsecase RoomUsecaseInterface) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	m.roomUsecase = roomUsecase
 }
 
 func (m *Manager) AddClient(clientID string, userID int, conn *websocket.Conn, cancel context.CancelFunc) {
@@ -66,13 +102,47 @@ func (m *Manager) AddClient(clientID string, userID int, conn *websocket.Conn, c
 		Cancel: cancel,
 	}
 
+	// 切断されたユーザーの状態を復元する
+	if disconnectedUser, exists := m.disconnectedUsers[userID]; exists {
+		// 削除タイマーをキャンセル
+		if disconnectedUser.DeleteTimer != nil {
+			disconnectedUser.DeleteTimer.Stop()
+		}
+
+		// 前の状態を復元
+		client.RoomID = disconnectedUser.RoomID
+		if client.RoomID != nil {
+			// roomClientsにも再登録
+			m.roomClients[*client.RoomID] = append(m.roomClients[*client.RoomID], client)
+
+			// RoomUsecaseに再接続を通知
+			if m.roomUsecase != nil {
+				if _, err := m.roomUsecase.SetPlayerReconnected(*client.RoomID, userID); err != nil {
+					log.Warn().Err(err).
+						Int("room_id", *client.RoomID).
+						Int("user_id", userID).
+						Msg("Failed to notify room usecase about player reconnection")
+				}
+			}
+		}
+
+		// disconnectedUsersから削除
+		delete(m.disconnectedUsers, userID)
+
+		log.Info().
+			Str("client_id", clientID).
+			Int("user_id", userID).
+			Interface("restored_room_id", client.RoomID).
+			Msg("WebSocket client reconnected and state restored")
+	} else {
+		log.Info().
+			Str("client_id", clientID).
+			Int("user_id", userID).
+			Msg("WebSocket client connected for the first time")
+	}
+
 	m.clients[clientID] = client
 	m.userClients[userID] = client
-
-	log.Info().
-		Str("client_id", clientID).
-		Int("user_id", userID).
-		Msg("WebSocket client connected")
 }
 
 func (m *Manager) RemoveClient(clientID string) {
@@ -84,10 +154,10 @@ func (m *Manager) RemoveClient(clientID string) {
 		return
 	}
 
-	// userClientsから削除
+	// userClientsから削除（即座に）
 	delete(m.userClients, client.UserID)
 
-	// roomClientsから削除
+	// roomClientsから削除（即座に）
 	if client.RoomID != nil {
 		roomID := *client.RoomID
 		if clients, exists := m.roomClients[roomID]; exists {
@@ -105,14 +175,59 @@ func (m *Manager) RemoveClient(clientID string) {
 		}
 	}
 
-	// クライアントを削除
+	// RoomUsecaseに切断を通知
+	if m.roomUsecase != nil && client.RoomID != nil {
+		if _, err := m.roomUsecase.SetPlayerDisconnected(*client.RoomID, client.UserID); err != nil {
+			log.Warn().Err(err).
+				Int("room_id", *client.RoomID).
+				Int("user_id", client.UserID).
+				Msg("Failed to notify room usecase about player disconnection")
+		}
+	}
+
+	// ユーザーの状態を一時保存し、遅延削除タイマーを設定
+	userState := &UserState{
+		UserID:     client.UserID,
+		RoomID:     client.RoomID,
+		LastSeenAt: time.Now(),
+	}
+
+	// 削除タイマーを設定
+	userState.DeleteTimer = time.AfterFunc(m.deleteTimeout, func() {
+		m.mutex.Lock()
+		defer m.mutex.Unlock()
+
+		// タイムアウト後にユーザー状態を完全削除
+		if state, exists := m.disconnectedUsers[client.UserID]; exists {
+			// RoomUsecaseに永続削除を通知
+			if m.roomUsecase != nil && state.RoomID != nil {
+				if _, err := m.roomUsecase.RemoveDisconnectedPlayer(*state.RoomID, client.UserID); err != nil {
+					log.Warn().Err(err).
+						Int("room_id", *state.RoomID).
+						Int("user_id", client.UserID).
+						Msg("Failed to notify room usecase about player removal")
+				}
+			}
+
+			delete(m.disconnectedUsers, client.UserID)
+			log.Info().
+				Int("user_id", client.UserID).
+				Dur("after_disconnect", time.Since(state.LastSeenAt)).
+				Msg("User permanently deleted after timeout")
+		}
+	})
+
+	m.disconnectedUsers[client.UserID] = userState
+
+	// クライアント接続を削除
 	client.Cancel()
 	delete(m.clients, clientID)
 
 	log.Info().
 		Str("client_id", clientID).
 		Int("user_id", client.UserID).
-		Msg("WebSocket client disconnected")
+		Dur("delete_timeout", m.deleteTimeout).
+		Msg("WebSocket client disconnected, scheduled for delayed deletion")
 }
 
 func (m *Manager) JoinRoom(userID, roomID int) error {
@@ -151,12 +266,13 @@ func (m *Manager) LeaveRoom(userID int) error {
 		return nil
 	}
 
+	roomID := *client.RoomID
 	m.leaveRoomInternal(client)
 
 	log.Info().
 		Int("user_id", userID).
-		Int("room_id", *client.RoomID).
-		Msg("User left room via WebSocket")
+		Int("room_id", roomID).
+		Msg("User left room via WebSocket (connection maintained)")
 
 	return nil
 }
@@ -486,4 +602,95 @@ func (m *Manager) SendEventToUser(userID int, event WebSocketEvent) error {
 		Msg("Sent structured event to user")
 
 	return nil
+}
+
+// 遅延削除システム管理機能
+
+// GetDisconnectedUsers returns information about users scheduled for deletion
+func (m *Manager) GetDisconnectedUsers() map[int]*UserState {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	result := make(map[int]*UserState)
+	for userID, state := range m.disconnectedUsers {
+		result[userID] = &UserState{
+			UserID:     state.UserID,
+			RoomID:     state.RoomID,
+			LastSeenAt: state.LastSeenAt,
+			// DeleteTimer は含めない（goroutineセーフではないため）
+		}
+	}
+	return result
+}
+
+// ForceDeleteUser immediately deletes a user from disconnected users (cancels delayed deletion)
+func (m *Manager) ForceDeleteUser(userID int) bool {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	if state, exists := m.disconnectedUsers[userID]; exists {
+		if state.DeleteTimer != nil {
+			state.DeleteTimer.Stop()
+		}
+		delete(m.disconnectedUsers, userID)
+
+		log.Info().
+			Int("user_id", userID).
+			Msg("User force deleted from disconnected users")
+		return true
+	}
+	return false
+}
+
+// IsUserDisconnected checks if a user is in the disconnected users list
+func (m *Manager) IsUserDisconnected(userID int) bool {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	_, exists := m.disconnectedUsers[userID]
+	return exists
+}
+
+// GetDeleteTimeout returns the current delete timeout duration
+func (m *Manager) GetDeleteTimeout() time.Duration {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+	return m.deleteTimeout
+}
+
+// SetDeleteTimeout sets a new delete timeout duration
+func (m *Manager) SetDeleteTimeout(timeout time.Duration) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	m.deleteTimeout = timeout
+
+	log.Info().
+		Dur("new_timeout", timeout).
+		Msg("Delete timeout updated")
+}
+
+// GetDisconnectedUserStats returns statistics about disconnected users
+func (m *Manager) GetDisconnectedUserStats() map[string]interface{} {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	stats := map[string]interface{}{
+		"total_disconnected": len(m.disconnectedUsers),
+		"timeout_duration":   m.deleteTimeout,
+		"users":              make([]map[string]interface{}, 0),
+	}
+
+	users := make([]map[string]interface{}, 0, len(m.disconnectedUsers))
+	for userID, state := range m.disconnectedUsers {
+		userInfo := map[string]interface{}{
+			"user_id":           userID,
+			"room_id":           state.RoomID,
+			"last_seen_at":      state.LastSeenAt,
+			"time_until_delete": m.deleteTimeout - time.Since(state.LastSeenAt),
+		}
+		users = append(users, userInfo)
+	}
+	stats["users"] = users
+
+	return stats
 }
