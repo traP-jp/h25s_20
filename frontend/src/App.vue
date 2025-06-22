@@ -1,11 +1,11 @@
 <script setup lang="ts">
-import { RouterView, RouterLink } from "vue-router";
+import { RouterView } from "vue-router";
 </script>
 
 <template>
   <div>
     <!-- Simple navigation bar -->
-    <nav class="nav-bar">
+    <!-- <nav class="nav-bar">
       <h1>Juuten Game</h1>
       <div class="nav-links">
         <RouterLink to="/">Home</RouterLink>
@@ -14,8 +14,8 @@ import { RouterView, RouterLink } from "vue-router";
         <RouterLink to="/play">Play</RouterLink>
         <RouterLink to="/api-test" class="api-test-link">🛠️ API Test</RouterLink>
       </div>
-    </nav>
-    
+    </nav> -->
+
     <main>
       <router-view />
     </main>
@@ -80,7 +80,7 @@ main {
     flex-direction: column;
     gap: 1rem;
   }
-  
+
   .nav-links {
     flex-wrap: wrap;
     justify-content: center;
