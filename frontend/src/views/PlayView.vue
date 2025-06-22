@@ -69,6 +69,9 @@ const gameTime = ref(60); // 初期時間60秒
 const gameStarted = ref(false);
 const countdown = ref(-1); // -1 means hide the countdown screen
 
+// 各プレイヤーのリアルタイムスコアを追跡
+const playerScores = ref<Map<number, { name: string; score: number }>>(new Map());
+
 // 現在のユーザーIDを取得
 function getCurrentUserId(): number {
   try {
@@ -259,6 +262,19 @@ onMounted(() => {
         gameTime.value = 120; // 120秒ゲーム
         startGameTimer();
 
+        // プレイヤースコアを初期化
+        playerScores.value.clear();
+        // 現在のルームのプレイヤー情報からスコアを初期化
+        for (const player of roomPlayersStore.players) {
+          if (player.id) {
+            playerScores.value.set(parseInt(player.id), {
+              name: player.name,
+              score: 0
+            });
+          }
+        }
+        console.log("Initialized player scores:", playerScores.value);
+
         // ボード情報があれば更新
         if (event.content && typeof event.content === "object" && "board" in event.content) {
           const boardContent = event.content as any;
@@ -276,13 +292,33 @@ onMounted(() => {
             console.log("Updating board from WebSocket:", boardContent.board.content);
             board.value = boardContent.board.content;
           }
-          // 自分が提出した数式の得点のみを自分のスコアに加算
-          if (boardContent.gain_score && boardContent.user_id === getCurrentUserId()) {
-            gameScore.value += boardContent.gain_score;
-            console.log("Score updated (own submission):", gameScore.value, "gained:", boardContent.gain_score);
-          } else if (boardContent.gain_score) {
-            console.log("Score gained by other player:", boardContent.user_name, "gained:", boardContent.gain_score);
+          
+          // プレイヤーのスコアを更新
+          if (boardContent.gain_score && boardContent.user_id) {
+            const userId = boardContent.user_id;
+            const gainScore = boardContent.gain_score;
+            
+            // 自分のスコアを更新
+            if (userId === getCurrentUserId()) {
+              gameScore.value += gainScore;
+              console.log("Score updated (own submission):", gameScore.value, "gained:", gainScore);
+            }
+            
+            // 全プレイヤーのスコアマップを更新
+            if (playerScores.value.has(userId)) {
+              const playerData = playerScores.value.get(userId)!;
+              playerData.score += gainScore;
+              console.log(`Updated score for ${playerData.name}: ${playerData.score} (+${gainScore})`);
+            } else {
+              // 新しいプレイヤーの場合、追加
+              playerScores.value.set(userId, {
+                name: boardContent.user_name || `Player ${userId}`,
+                score: gainScore
+              });
+              console.log(`Added new player ${boardContent.user_name} with score: ${gainScore}`);
+            }
           }
+          
           version.value = boardContent.board.version;
         }
         break;
@@ -293,6 +329,20 @@ onMounted(() => {
         gameStarted.value = false;
         stopGameTimer();
         showResultModal.value = true;
+
+        // 蓄積されたプレイヤースコア情報をgameResultStoreに反映
+        const finalScores = Array.from(playerScores.value.entries()).map(([userId, playerData]) => ({
+          user_id: userId,
+          user_name: playerData.name,
+          score: playerData.score
+        }));
+        
+        if (finalScores.length > 0) {
+          gameResultStore.updatePlayers(finalScores);
+          console.log("Updated game result store with tracked scores:", finalScores);
+        } else {
+          console.warn("No player scores tracked during the game");
+        }
 
         // 全てのプレイヤーの isReady を false に設定
         for (const player of roomPlayersStore.players) {
