@@ -30,7 +30,7 @@
 
     <TopBar :room="currentRoom" />
     <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
-    <button @click="debugStartCountdown(3)">Debug Countdown</button>
+    <!-- <button @click="debugStartCountdown(3)">Debug Countdown</button> -->
     <CountDown v-if="countdown > 0" :time="countdown" />
   </div>
 </template>
@@ -428,24 +428,6 @@ function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
-}
-
-// デバッグ関数
-function debugStartGame() {
-  gameStarted.value = true;
-  gameTime.value = 60;
-  startGameTimer();
-  console.log("Debug: Game started");
-}
-
-// デバッグ用カウントダウン
-async function debugStartCountdown(startNum: number) {
-  for (let i = startNum; i > 0; i--) {
-    countdown.value = i;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  countdown.value = -1;
-  debugStartGame(); // カウントダウン後にゲーム開始
 }
 
 const currentExpression = ref("");
