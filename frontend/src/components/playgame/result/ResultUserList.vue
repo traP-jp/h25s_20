@@ -23,6 +23,7 @@ const players = [
 
 <style module>
 .container {
+  width: 320px;
   display: flex;
   flex-direction: column;
   align-items: center;

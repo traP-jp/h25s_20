@@ -1,9 +1,9 @@
 <template>
   <div :class="$style.container">
-    <ResultBadge :rank="props.rank"/>
+    <ResultBadge :rank="props.rank" :class="$style.rank" />
     <UserIcon :id="props.name" :size="40" />
-    <span>{{ props.name }}</span>
-    <span>{{ props.score }}点</span>
+    <div :class="$style.userName">{{ props.name }}</div>
+    <div :class="$style.score">{{ props.score }}点</div>
   </div>
 </template>
 <script setup lang="ts">
@@ -16,11 +16,22 @@ const props = defineProps<{
   rank: number;
   score: number;
 }>();
-
 </script>
 
 <style module>
 .container {
-  border: 1px solid #ccc;
+  width: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.rank {
+  margin-top: 5px;
+  margin-right: 10px;
+}
+
+.userName {
+  margin: 10px;
+  font-weight: bold;
 }
 </style>
