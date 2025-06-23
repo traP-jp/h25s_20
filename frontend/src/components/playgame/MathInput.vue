@@ -152,7 +152,7 @@ watch(expression, async (newValue) => {
 });
 
 const viewExpression = computed(() => {
-  return expression.value.replace("-", "−").replace("*", "×").replace("/", "÷");
+  return expression.value.replace(/-/g, "−").replace(/\*/g, "×").replace(/\//g, "÷");
 });
 
 const addSymbol = (value: string) => {
