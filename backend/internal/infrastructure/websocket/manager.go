@@ -3,6 +3,7 @@ package websocket
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"sync"
 	"time"
 
@@ -32,6 +33,8 @@ type RoomUsecaseInterface interface {
 	SetPlayerDisconnected(roomID int, playerID int) (*domain.Room, error)
 	SetPlayerReconnected(roomID int, playerID int) (*domain.Room, error)
 	RemoveDisconnectedPlayer(roomID int, playerID int) (*domain.Room, error)
+	GetRoomByID(roomID int) (*domain.Room, error)
+	RemovePlayerFromRoom(roomID int, playerID int) (*domain.Room, error)
 }
 
 type Manager struct {
@@ -240,8 +243,22 @@ func (m *Manager) JoinRoom(userID, roomID int) error {
 		return nil // WebSocket接続がない場合はエラーにしない
 	}
 
-	// 既に別のroomに参加している場合は先に退出
+	// 既に別のroomに参加している場合の処理
 	if client.RoomID != nil {
+		oldRoomID := *client.RoomID
+
+		// 古い部屋でのゲーム進行状況を確認し、適切な処理を行う
+		if m.roomUsecase != nil {
+			if err := m.handlePreviousRoomExit(userID, oldRoomID); err != nil {
+				log.Warn().Err(err).
+					Int("user_id", userID).
+					Int("old_room_id", oldRoomID).
+					Int("new_room_id", roomID).
+					Msg("Failed to handle previous room exit properly")
+			}
+		}
+
+		// WebSocketレベルでの退室処理
 		m.leaveRoomInternal(client)
 	}
 
@@ -253,6 +270,54 @@ func (m *Manager) JoinRoom(userID, roomID int) error {
 		Int("user_id", userID).
 		Int("room_id", roomID).
 		Msg("User joined room via WebSocket")
+
+	return nil
+}
+
+// handlePreviousRoomExit handles the exit from previous room based on game state
+func (m *Manager) handlePreviousRoomExit(userID, roomID int) error {
+	// RoomUsecaseから部屋の状態を取得
+	room, err := m.roomUsecase.GetRoomByID(roomID)
+	if err != nil {
+		return fmt.Errorf("failed to get room %d: %w", roomID, err)
+	}
+
+	// ゲームが進行していない状態の場合は即時削除
+	switch room.State {
+	case domain.StateWaitingForPlayers, domain.StateAllReady, domain.StateGameEnded:
+		// ゲームが進行していない状態では即時削除
+		if _, err := m.roomUsecase.RemovePlayerFromRoom(roomID, userID); err != nil {
+			log.Warn().Err(err).
+				Int("room_id", roomID).
+				Int("user_id", userID).
+				Str("room_state", room.State.String()).
+				Msg("Failed to immediately remove player from non-progressing room")
+			return err
+		}
+
+		log.Info().
+			Int("room_id", roomID).
+			Int("user_id", userID).
+			Str("room_state", room.State.String()).
+			Msg("Player immediately removed from non-progressing room")
+
+	case domain.StateCountdown, domain.StateGameInProgress:
+		// ゲーム進行中の場合は通常の切断処理
+		if _, err := m.roomUsecase.SetPlayerDisconnected(roomID, userID); err != nil {
+			log.Warn().Err(err).
+				Int("room_id", roomID).
+				Int("user_id", userID).
+				Str("room_state", room.State.String()).
+				Msg("Failed to set player as disconnected in progressing room")
+			return err
+		}
+
+		log.Info().
+			Int("room_id", roomID).
+			Int("user_id", userID).
+			Str("room_state", room.State.String()).
+			Msg("Player marked as disconnected in progressing room")
+	}
 
 	return nil
 }
