@@ -9,7 +9,12 @@
       </div>
       <div :class="$style.right">
         <TextMark text="players" bgColor="#bb0000" :class="$style.playerMark" />
-        <OpponentInfo v-for="player in players" :key="player.name" :id="player.name" :score="player.score" />
+        <OpponentInfo
+          v-for="player in Array.from(playerScores.values()).sort((a, b) => b.score - a.score)"
+          :key="player.name"
+          :id="player.name"
+          :score="player.score"
+        />
       </div>
     </div>
     <div :class="$style.board">
@@ -22,6 +27,7 @@
         v-model:board="board"
         v-model:current-expression="currentExpression"
         v-model:currentRoom="currentRoom"
+        v-model:expression="expression"
       />
     </div>
 
@@ -30,7 +36,7 @@
 
     <TopBar :room="currentRoom" />
     <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
-    <button @click="debugStartCountdown(3)">Debug Countdown</button>
+    <!-- <button @click="debugStartCountdown(3)">Debug Countdown</button> -->
     <CountDown v-if="countdown > 0" :time="countdown" />
   </div>
 </template>
@@ -64,34 +70,13 @@ const roomPlayersStore = useRoomPlayersStore();
 const currentRoomStore = useCurrentRoomStore();
 
 // ゲーム状態
-const gameScore = ref(0);
 const gameTime = ref(60); // 初期時間60秒
 const gameStarted = ref(false);
 const countdown = ref(-1); // -1 means hide the countdown screen
+const expression = ref("");
 
-// 現在のユーザーIDを取得
-function getCurrentUserId(): number {
-  try {
-    const token = localStorage.getItem("authToken");
-    if (!token) {
-      console.warn("認証トークンが見つかりません");
-      return 0;
-    }
-
-    // JWTトークンをデコード（セキュアではないが、ペイロード部分のみを読み取り）
-    const payload = JSON.parse(atob(token.split('.')[1]));
-    
-    if (payload.user_id) {
-      return Number(payload.user_id);
-    }
-    
-    console.warn("トークンにuser_idが含まれていません");
-    return 0;
-  } catch (error) {
-    console.error("JWTトークンの解析に失敗しました:", error);
-    return 0;
-  }
-}
+// 各プレイヤーのリアルタイムスコアを追跡
+const playerScores = ref<Map<string, { name: string; score: number }>>(new Map());
 
 const version = ref(0); // フォーミュラのバージョン管理
 
@@ -125,7 +110,7 @@ function sendBoardUpdate(newBoard: number[], gainScore: number) {
     event: "board_update",
     content: {
       room_id: currentRoom.value.roomId,
-      user_id: getCurrentUserId(),
+      user_name: webSocketStore.currentUsername,
       board: {
         content: newBoard,
         version: Date.now(), // 簡易的なバージョン管理
@@ -176,8 +161,7 @@ onMounted(() => {
   if (room?.users && room.users.length > 0) {
     // Room型のusersをroomPlayersStoreが期待する形式に変換
     const roomPlayers = room.users.map((user) => ({
-      user_id: 0,
-      user_name: user.username, // Room型ではnameがないため、idをnameとして使用
+      user_name: user.username,
       is_ready: user.isReady,
     }));
     roomPlayersStore.updatePlayers(roomPlayers);
@@ -188,6 +172,56 @@ onMounted(() => {
     console.log("PlayView received WebSocket event:", event);
 
     switch (event.event) {
+      case WS_EVENTS.PLAYER_JOINED:
+        console.log("Player joined event received:", event.content);
+        if (event.content && typeof event.content === "object" && "room" in event.content) {
+          const roomContent = event.content as any;
+          if (roomContent.room && roomContent.room.players) {
+            // ルームプレイヤーストアを更新
+            const roomPlayers = roomContent.room.players.map((player: any) => ({
+              user_name: player.user_name,
+              is_ready: player.is_ready,
+            }));
+            roomPlayersStore.updatePlayers(roomPlayers);
+            console.log("Updated room players after PLAYER_JOINED:", roomPlayers);
+          }
+        }
+        break;
+
+      case WS_EVENTS.PLAYER_READY:
+        console.log("Player ready event received:", event.content);
+        if (event.content && typeof event.content === "object" && "user_name" in event.content) {
+          const playerContent = event.content as any;
+          roomPlayersStore.setPlayerReady(playerContent.user_name, true);
+          console.log(`Player ${playerContent.user_name} is now ready`);
+        }
+        break;
+
+      case WS_EVENTS.PLAYER_CANCELED:
+        console.log("Player canceled event received:", event.content);
+        if (event.content && typeof event.content === "object" && "user_name" in event.content) {
+          const playerContent = event.content as any;
+          roomPlayersStore.setPlayerReady(playerContent.user_name, false);
+          console.log(`Player ${playerContent.user_name} canceled ready state`);
+        }
+        break;
+
+      case WS_EVENTS.PLAYER_LEFT:
+        console.log("Player left event received:", event.content);
+        if (event.content && typeof event.content === "object" && "room" in event.content) {
+          const roomContent = event.content as any;
+          if (roomContent.room && roomContent.room.players) {
+            // ルームプレイヤーストアを更新
+            const roomPlayers = roomContent.room.players.map((player: any) => ({
+              user_name: player.user_name,
+              is_ready: player.is_ready,
+            }));
+            roomPlayersStore.updatePlayers(roomPlayers);
+            console.log("Updated room players after PLAYER_LEFT:", roomPlayers);
+          }
+        }
+        break;
+
       case WS_EVENTS.COUNTDOWN_START:
         console.log("Countdown start event received");
         break;
@@ -205,7 +239,36 @@ onMounted(() => {
         showStartModal.value = false; // スタートモーダルを閉じる
         gameStarted.value = true;
         gameTime.value = 120; // 120秒ゲーム
+        version.value = 0; // バージョンをリセット
+        expression.value = ""; // 数式をリセット
+
         startGameTimer();
+
+        console.log("players:", roomPlayersStore.players);
+
+        // プレイヤースコアを初期化
+        playerScores.value.clear();
+        // 現在のルームのプレイヤー情報からスコアを初期化
+        for (const player of roomPlayersStore.players) {
+          playerScores.value.set(player.name, {
+            name: player.name,
+            score: 0,
+          });
+        }
+
+        console.log("playerScores initialized:", playerScores.value);
+
+        // 現在のユーザーも確実に追加
+        // const currentUserId = getCurrentUserId();
+        // if (currentUserId && !playerScores.value.has(currentUserId)) {
+        //   const currentPlayer = roomPlayersStore.players.find((p) => parseInt(p.id) === currentUserId);
+        //   playerScores.value.set(currentUserId, {
+        //     name: currentPlayer?.name || `Player ${currentUserId}`,
+        //     score: 0,
+        //   });
+        // }
+
+        console.log("Initialized player scores:", playerScores.value);
 
         // ボード情報があれば更新
         if (event.content && typeof event.content === "object" && "board" in event.content) {
@@ -224,13 +287,34 @@ onMounted(() => {
             console.log("Updating board from WebSocket:", boardContent.board.content);
             board.value = boardContent.board.content;
           }
-          // 自分が提出した数式の得点のみを自分のスコアに加算
-          if (boardContent.gain_score && boardContent.user_id === getCurrentUserId()) {
-            gameScore.value += boardContent.gain_score;
-            console.log("Score updated (own submission):", gameScore.value, "gained:", boardContent.gain_score);
-          } else if (boardContent.gain_score) {
-            console.log("Score gained by other player:", boardContent.user_name, "gained:", boardContent.gain_score);
+
+          // プレイヤーのスコアを更新
+          if (boardContent.gain_score && boardContent.user_name) {
+            const userName = boardContent.user_name;
+            const gainScore = boardContent.gain_score;
+
+            // 全プレイヤーのスコアマップを更新
+            if (playerScores.value.has(userName)) {
+              const playerData = playerScores.value.get(userName)!;
+              playerData.score += gainScore;
+              console.log(`Updated score for ${playerData.name}: ${playerData.score} (+${gainScore})`);
+            } else {
+              // 新しいプレイヤーの場合、追加
+              playerScores.value.set(userName, {
+                name: userName,
+                score: gainScore,
+              });
+              console.log(`Added new player ${userName} with score: ${gainScore}`);
+              console.log("Current player scores:", playerScores.value);
+            }
+
+            // 自分のスコア更新ログ
+            const currentUsername = webSocketStore.currentUsername;
+            if (userName === currentUsername) {
+              console.log("Score updated (own submission):", gameScore.value, "gained:", gainScore);
+            }
           }
+
           version.value = boardContent.board.version;
         }
         break;
@@ -241,6 +325,19 @@ onMounted(() => {
         gameStarted.value = false;
         stopGameTimer();
         showResultModal.value = true;
+
+        // 蓄積されたプレイヤースコア情報をgameResultStoreに反映
+        const finalScores = Array.from(playerScores.value.entries()).map(([userName, playerData]) => ({
+          user_name: userName,
+          score: playerData.score,
+        }));
+
+        if (finalScores.length > 0) {
+          gameResultStore.updatePlayers(finalScores);
+          console.log("Updated game result store with tracked scores:", finalScores);
+        } else {
+          console.warn("No player scores tracked during the game");
+        }
 
         // 全てのプレイヤーの isReady を false に設定
         for (const player of roomPlayersStore.players) {
@@ -283,12 +380,6 @@ function generateInitialBoard(): number[] {
 
 const board = ref(generateInitialBoard());
 
-// プレイヤー情報（後でWebSocketから取得する予定）
-const players = [
-  { icon: "/images/player1.png", name: "Player 01", score: 30 },
-  { icon: "/images/player2.png", name: "Player 02", score: 50 },
-];
-
 const showStartModal = ref(true);
 const showResultModal = ref(false);
 const currentRoom = ref<Room | null>(null);
@@ -318,29 +409,19 @@ function calculateScoreGain(newBoard: number[], oldBoard: number[]): number {
   return changes * 10; // 変更1つあたり10点
 }
 
+// 現在のユーザーのスコアを playerScores から取得
+const gameScore = computed(() => {
+  const currentUsername = webSocketStore.currentUsername;
+  console.log("Current username:", currentUsername);
+  const playerData = playerScores.value.get(currentUsername);
+  return playerData ? playerData.score : 0;
+});
+
 // 時間をMM:SS形式でフォーマット
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
-}
-
-// デバッグ関数
-function debugStartGame() {
-  gameStarted.value = true;
-  gameTime.value = 60;
-  startGameTimer();
-  console.log("Debug: Game started");
-}
-
-// デバッグ用カウントダウン
-async function debugStartCountdown(startNum: number) {
-  for (let i = startNum; i > 0; i--) {
-    countdown.value = i;
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-  }
-  countdown.value = -1;
-  debugStartGame(); // カウントダウン後にゲーム開始
 }
 
 const currentExpression = ref("");

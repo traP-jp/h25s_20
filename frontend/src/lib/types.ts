@@ -29,7 +29,6 @@ export type PlayerScore = {
 
 // ゲーム結果表示用のプレイヤー情報
 export type ResultPlayer = {
-  id: string;
   name: string;
   score: number;
   rank: number;
@@ -37,7 +36,6 @@ export type ResultPlayer = {
 
 // ゲーム開始前の待機室用プレイヤー情報
 export type StartPlayer = {
-  id: string;
   name: string;
   gold: number;
   silver: number;

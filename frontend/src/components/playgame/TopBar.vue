@@ -23,7 +23,7 @@ const webSocketStore = useWebSocketStore();
 
 // WebSocketStoreのcurrentUsernameが空の場合はlocalStorageから取得
 const currentUsername = computed(() => {
-  return webSocketStore.currentUsername || localStorage.getItem("username") || "Unknown";
+  return webSocketStore.currentUsername || sessionStorage.getItem("username") || "Unknown";
 });
 
 // propsからroomを受け取る

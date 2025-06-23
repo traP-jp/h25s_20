@@ -20,9 +20,8 @@ export const useNotificationStore = defineStore("notificationStore", () => {
 export const useRoomPlayersStore = defineStore("roomPlayersStore", () => {
   const players = ref<StartPlayer[]>([]);
 
-  const updatePlayers = (roomPlayers: Array<{ user_id: number; user_name: string; is_ready: boolean }>) => {
+  const updatePlayers = (roomPlayers: Array<{ user_name: string; is_ready: boolean }>) => {
     players.value = roomPlayers.map((player) => ({
-      id: player.user_id.toString(),
       name: player.user_name,
       gold: 0, // デフォルト値（実績データが無いため）
       silver: 0,
@@ -31,8 +30,8 @@ export const useRoomPlayersStore = defineStore("roomPlayersStore", () => {
     }));
   };
 
-  const setPlayerReady = (userId: string, isReady: boolean) => {
-    const player = players.value.find((p) => p.id === userId);
+  const setPlayerReady = (username: string, isReady: boolean) => {
+    const player = players.value.find((p) => p.name === username);
     if (player) {
       player.isReady = isReady;
     }
@@ -54,12 +53,11 @@ export const useRoomPlayersStore = defineStore("roomPlayersStore", () => {
 export const useGameResultStore = defineStore("gameResultStore", () => {
   const players = ref<ResultPlayer[]>([]);
 
-  const updatePlayers = (finalScores: Array<{ user_id: number; user_name: string; score: number }>) => {
+  const updatePlayers = (finalScores: Array<{ user_name: string; score: number }>) => {
     // スコア順でソートしてランクを計算
     const sortedScores = [...finalScores].sort((a, b) => b.score - a.score);
 
     players.value = sortedScores.map((player, index) => ({
-      id: player.user_id.toString(),
       name: player.user_name,
       score: player.score,
       rank: index + 1,

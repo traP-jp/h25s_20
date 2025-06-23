@@ -64,9 +64,9 @@ const onClick = async () => {
       // JWTトークンがレスポンスに含まれる場合は保存
       if (response.data?.token) {
         apiClient.setAuthToken(response.data.token);
-        // ローカルストレージに保存（必要に応じて）
-        localStorage.setItem("authToken", response.data.token);
-        localStorage.setItem("username", username.value.trim());
+        // セッションストレージに保存（タブごとに独立）
+        sessionStorage.setItem("authToken", response.data.token);
+        sessionStorage.setItem("username", username.value.trim());
       }
 
       // WebSocket接続を初期化
