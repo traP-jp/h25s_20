@@ -21,6 +21,9 @@ import (
 //go:embed openapi/swagger.yml
 var swaggerFile []byte
 
+//go:embed logo-ogp.png
+var logoOGPFile []byte
+
 func SetupRouter(database *sql.DB) *echo.Echo {
 	// Load configuration for JWT secret
 	cfg := config.LoadConfig()
@@ -80,6 +83,11 @@ func SetupRouter(database *sql.DB) *echo.Echo {
 	// 認証不要エンドポイント
 	api.GET("/health", apiHandler.GetHealth)
 	api.POST("/users", apiHandler.PostUsers)
+
+	// 静的ファイル配信（OGP画像）
+	api.GET("/logo-ogp.png", func(c echo.Context) error {
+		return c.Blob(200, "image/png", logoOGPFile)
+	})
 
 	// 認証が必要なエンドポイント
 	protectedApi := api.Group("")
