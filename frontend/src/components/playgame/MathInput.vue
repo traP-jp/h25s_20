@@ -47,13 +47,16 @@
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onUnmounted } from "vue";
+import { computed, onMounted, onUnmounted } from "vue";
 import MathInputButton from "./MathInputButton.vue";
 import { defineModel, watch } from "vue";
 import { checkMath } from "@/lib/board-update";
 import { apiClient } from "@/api";
 
-const expression = ref("");
+const expression = defineModel<string>("expression", {
+  default: "",
+  type: String,
+});
 const board = defineModel<number[]>("board");
 const version = defineModel<number>("version");
 

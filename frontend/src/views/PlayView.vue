@@ -27,6 +27,7 @@
         v-model:board="board"
         v-model:current-expression="currentExpression"
         v-model:currentRoom="currentRoom"
+        v-model:expression="expression"
       />
     </div>
 
@@ -72,6 +73,7 @@ const currentRoomStore = useCurrentRoomStore();
 const gameTime = ref(60); // 初期時間60秒
 const gameStarted = ref(false);
 const countdown = ref(-1); // -1 means hide the countdown screen
+const expression = ref("");
 
 // 各プレイヤーのリアルタイムスコアを追跡
 const playerScores = ref<Map<string, { name: string; score: number }>>(new Map());
@@ -237,6 +239,9 @@ onMounted(() => {
         showStartModal.value = false; // スタートモーダルを閉じる
         gameStarted.value = true;
         gameTime.value = 120; // 120秒ゲーム
+        version.value = 0; // バージョンをリセット
+        expression.value = ""; // 数式をリセット
+
         startGameTimer();
 
         console.log("players:", roomPlayersStore.players);
