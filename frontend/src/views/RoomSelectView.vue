@@ -28,7 +28,8 @@ async function fetchRooms() {
   try {
     const response = await apiClient.getRooms();
     if (response.success) {
-      roomData.value = response.data;
+      // ルームIDの昇順でソート
+      roomData.value = response.data.sort((a: Room, b: Room) => a.roomId - b.roomId);
       console.log(response.data);
     } else {
       console.error("Failed to fetch rooms:", response.data);
