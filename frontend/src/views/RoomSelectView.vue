@@ -6,9 +6,7 @@
       <RoomButton v-for="room in roomData" :key="room.roomId" :room="room" @click="handleRoomClick(room)" />
     </div>
 
-    <!-- <button :class="$style.button" @click="onClick">
-      プレイ方法を確認
-    </button> -->
+    <button :class="$style.button" @click="onClick">プレイ方法を確認</button>
   </div>
 </template>
 
@@ -92,6 +90,10 @@ async function handleRoomClick(room: Room) {
 onMounted(() => {
   fetchRooms();
 });
+
+const onClick = () => {
+  router.push("/help");
+};
 </script>
 
 <style module>
@@ -142,8 +144,7 @@ onMounted(() => {
 }
 
 .button:hover {
-  background-color: #218838;
-  background-color: #218838;
+  background-color: #218838 !important;
 }
 
 .empty {
