@@ -11,14 +11,18 @@ import (
 )
 
 type RoomUsecase struct {
-	rooms map[int]*domain.Room
-	mutex sync.RWMutex
+	rooms      map[int]*domain.Room
+	mutex      sync.RWMutex
+	gameTimers map[int]bool // ゲームタイマー重複実行防止用
+	timerMutex sync.Mutex   // gameTimers用の専用mutex
 }
 
 func NewRoomUsecase() *RoomUsecase {
 	usecase := &RoomUsecase{
-		rooms: make(map[int]*domain.Room),
-		mutex: sync.RWMutex{},
+		rooms:      make(map[int]*domain.Room),
+		mutex:      sync.RWMutex{},
+		gameTimers: make(map[int]bool),
+		timerMutex: sync.Mutex{},
 	}
 
 	// 10個のroomを初期化
@@ -215,12 +219,16 @@ func (r *RoomUsecase) RemovePlayerFromRoom(roomID int, playerID int) (*domain.Ro
 		return nil, fmt.Errorf("room with ID %d not found", roomID)
 	}
 
-	// プレイヤーを見つけて削除
+	// プレイヤーを見つけて削除（安全性向上）
 	playerFound := false
-	for i, player := range room.Players {
-		if player.ID == playerID {
-			// スライスから削除
-			room.Players = append(room.Players[:i], room.Players[i+1:]...)
+	for i := 0; i < len(room.Players); i++ {
+		if room.Players[i].ID == playerID {
+			// 境界チェック付きでスライスから削除
+			if i < len(room.Players)-1 {
+				room.Players = append(room.Players[:i], room.Players[i+1:]...)
+			} else {
+				room.Players = room.Players[:i]
+			}
 			playerFound = true
 			break
 		}
@@ -268,6 +276,9 @@ func (r *RoomUsecase) EndGame(roomID int) (*domain.Room, error) {
 		return nil, fmt.Errorf("failed to end game: %w", err)
 	}
 
+	// ゲーム終了時にタイマーを確実に停止
+	r.StopGameTimer(roomID)
+
 	return room, nil
 }
 
@@ -311,26 +322,55 @@ func (r *RoomUsecase) ApplyFormulaWithVersion(roomID int, playerID int, formula 
 		return nil, 0, fmt.Errorf("%s", errMessage)
 	}
 
-	// 連続正解数をカウント
-	if room.LastCorrectPlayerID == playerID {
-		room.StreakCount++
-	} else {
-		room.StreakCount = 1
-		room.LastCorrectPlayerID = playerID
-	}
+	// 連続正解数とスコア計算を原子的に実行
+	var gainScore int
+	playerFound := false
 
-	// スコア計算: 消した組数 * (5+5*"連続正解数")点
-	gainScore := matchCount * (5 + 5*room.StreakCount)
-
-	// プレイヤーのスコアに加算
+	// プレイヤーを見つけてスコア更新を1回だけ実行
 	for i := range room.Players {
 		if room.Players[i].ID == playerID {
+			// 連続正解数をカウント
+			if room.LastCorrectPlayerID == playerID {
+				room.StreakCount++
+			} else {
+				room.StreakCount = 1
+				room.LastCorrectPlayerID = playerID
+			}
+
+			// スコア計算: 消した組数 * (5+5*"連続正解数")点
+			gainScore = matchCount * (5 + 5*room.StreakCount)
+
+			// プレイヤーのスコアに加算（1回のみ保証）
 			room.Players[i].Score += gainScore
+			playerFound = true
 			break
 		}
 	}
 
-	return currentBoard, gainScore, nil
+	if !playerFound {
+		return nil, 0, fmt.Errorf("player with ID %d not found in room", playerID)
+	}
+
+	// データレース回避のためGameBoardのディープコピーを返す
+	safeBoard := &domain.GameBoard{
+		Version:       currentBoard.Version,
+		Size:          currentBoard.Size,
+		Board:         make([][]int, currentBoard.Size),
+		ChangeHistory: make(map[int][]domain.Matches),
+	}
+
+	// 盤面データをコピー
+	for i := 0; i < currentBoard.Size; i++ {
+		safeBoard.Board[i] = make([]int, currentBoard.Size)
+		copy(safeBoard.Board[i], currentBoard.Board[i])
+	}
+
+	// 変更履歴もコピー（必要に応じて）
+	for k, v := range currentBoard.ChangeHistory {
+		safeBoard.ChangeHistory[k] = v
+	}
+
+	return safeBoard, gainScore, nil
 }
 
 // SetPlayerDisconnected marks a player as disconnected but keeps them in the room
@@ -412,18 +452,23 @@ func (r *RoomUsecase) RemoveDisconnectedPlayer(roomID int, playerID int) (*domai
 		return nil, fmt.Errorf("room with ID %d not found", roomID)
 	}
 
-	// プレイヤーを見つけて削除
+	// プレイヤーを見つけて削除（安全性向上）
 	playerFound := false
-	for i, player := range room.Players {
-		if player.ID == playerID && !player.IsConnected {
-			// スライスから削除
-			room.Players = append(room.Players[:i], room.Players[i+1:]...)
+	for i := 0; i < len(room.Players); i++ {
+		if room.Players[i].ID == playerID && !room.Players[i].IsConnected {
+			playerName := room.Players[i].UserName
+			// 境界チェック付きでスライスから削除
+			if i < len(room.Players)-1 {
+				room.Players = append(room.Players[:i], room.Players[i+1:]...)
+			} else {
+				room.Players = room.Players[:i]
+			}
 			playerFound = true
 
 			log.Info().
 				Int("room_id", roomID).
 				Int("player_id", playerID).
-				Str("player_name", player.UserName).
+				Str("player_name", playerName).
 				Msg("Disconnected player permanently removed from room")
 			break
 		}
@@ -498,4 +543,23 @@ func (r *RoomUsecase) areConnectedPlayersReady(room *domain.Room) bool {
 
 	// 接続中のプレイヤーが1人以上いて、全員がREADY
 	return connectedCount > 0 && connectedCount == readyCount
+}
+
+// CanStartGameTimer ゲームタイマーが開始可能かチェック（重複実行防止）
+func (r *RoomUsecase) CanStartGameTimer(roomID int) bool {
+	r.timerMutex.Lock()
+	defer r.timerMutex.Unlock()
+
+	if r.gameTimers[roomID] {
+		return false // 既にタイマーが実行中
+	}
+	r.gameTimers[roomID] = true
+	return true
+}
+
+// StopGameTimer ゲームタイマーを停止状態にマーク
+func (r *RoomUsecase) StopGameTimer(roomID int) {
+	r.timerMutex.Lock()
+	defer r.timerMutex.Unlock()
+	delete(r.gameTimers, roomID)
 }
