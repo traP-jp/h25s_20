@@ -5,17 +5,18 @@
       {
         [$style.highlighted]: isHighlighted,
         [$style.changed]: isAnimating,
+        [$style.empty]: !number || number === 0,
       },
     ]"
     :style="{
-      backgroundColor: colorMap[number],
+      backgroundColor: !number || number === 0 ? '#cccccc' : colorMap[number],
       borderColor: isHighlighted ? colorMap[number] : 'transparent',
       boxShadow: isHighlighted
         ? `0 0 5px ${colorMap[number]}cc, 0 0 8px ${colorMap[number]}`
         : 'none',
     }"
   >
-    {{ props.number }}
+    {{ !number || number === 0 ? "" : props.number }}
   </div>
 </template>
 
@@ -25,6 +26,7 @@ import { ref, watch } from "vue";
 const props = defineProps<{
   number: number;
   isHighlighted?: boolean;
+  isDisabled?: boolean;
 }>();
 
 const isAnimating = ref(false);
@@ -75,6 +77,11 @@ const colorMap: Record<number, string> = {
 
 .changed {
   animation: numberChange 0.6s ease-in-out;
+}
+
+.empty {
+  background-color: #cccccc !important;
+  color: transparent;
 }
 
 @keyframes numberChange {
