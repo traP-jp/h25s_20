@@ -361,15 +361,15 @@ func (h *Handler) GetRoomsRoomIdResult(c echo.Context, roomId int) error {
 
 // handleGameStart はゲーム開始時のカウントダウンと最初のボード生成・送信を処理する
 func (h *Handler) handleGameStart(roomID int) {
-	// カウントダウンを開始する通知を送信
+	// ゲーム開始カウントダウンを開始する通知を送信
 	if h.WebSocketHandler != nil {
-		h.WebSocketHandler.SendCountdownStartEventToRoom(roomID, "Game starting in 3 seconds", 3)
+		h.WebSocketHandler.SendCountdownStartGameEventToRoom(roomID, "Game starting in 3 seconds", 3)
 	}
 
-	// 3秒のカウントダウン
+	// 3秒のカウントダウン（ゲーム開始用イベント）
 	for i := 3; i > 0; i-- {
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
+			h.WebSocketHandler.SendCountdownGameEventToRoom(roomID, i)
 		}
 		time.Sleep(1 * time.Second)
 	}
@@ -422,12 +422,12 @@ func (h *Handler) handleGameTimer(roomID int) {
 		return // ゲームが既に終了している場合は何もしない
 	}
 
-	// ラスト10秒のカウントダウン開始を通知
+	// ラスト10秒のカウントダウン開始を通知（ゲーム終了用イベント）
 	if h.WebSocketHandler != nil {
-		h.WebSocketHandler.SendCountdownStartEventToRoom(roomID, "Game ending in 10 seconds", 10)
+		h.WebSocketHandler.SendCountdownStartEndEventToRoom(roomID, "Game ending in 10 seconds", 10)
 	}
 
-	// 10秒のカウントダウン
+	// 10秒のカウントダウン（ゲーム終了用イベント）
 	for i := 10; i > 0; i-- {
 
 		// 各秒でゲームがまだ進行中かチェック
@@ -437,7 +437,7 @@ func (h *Handler) handleGameTimer(roomID int) {
 		}
 
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
+			h.WebSocketHandler.SendCountdownEndGameEventToRoom(roomID, i)
 		}
 
 		time.Sleep(1 * time.Second)

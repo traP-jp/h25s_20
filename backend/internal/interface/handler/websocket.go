@@ -209,15 +209,27 @@ func (h *WebSocketHandler) SendGameStartEventToRoom(roomID int, message string) 
 	h.manager.SendEventToRoom(roomID, event)
 }
 
-// SendCountdownStartEventToRoom sends a countdown start event to all room members
-func (h *WebSocketHandler) SendCountdownStartEventToRoom(roomID int, message string, countdown int) {
-	event := wsManager.NewCountdownStartEvent(roomID, message, countdown)
+// SendCountdownStartGameEventToRoom sends a game start countdown start event to all room members
+func (h *WebSocketHandler) SendCountdownStartGameEventToRoom(roomID int, message string, countdown int) {
+	event := wsManager.NewCountdownStartGameEvent(roomID, message, countdown)
 	h.manager.SendEventToRoom(roomID, event)
 }
 
-// SendCountdownEventToRoom sends a countdown event to all room members
-func (h *WebSocketHandler) SendCountdownEventToRoom(roomID int, count int) {
-	event := wsManager.NewCountdownEvent(roomID, count)
+// SendCountdownGameEventToRoom sends a game start countdown event to all room members
+func (h *WebSocketHandler) SendCountdownGameEventToRoom(roomID int, count int) {
+	event := wsManager.NewCountdownGameEvent(roomID, count)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+// SendCountdownEndGameEventToRoom sends a game end countdown event to all room members
+func (h *WebSocketHandler) SendCountdownEndGameEventToRoom(roomID int, count int) {
+	event := wsManager.NewCountdownEndGameEvent(roomID, count)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+// SendCountdownStartEndEventToRoom sends a game end countdown start event to all room members
+func (h *WebSocketHandler) SendCountdownStartEndEventToRoom(roomID int, message string, countdown int) {
+	event := wsManager.NewCountdownStartEndEvent(roomID, message, countdown)
 	h.manager.SendEventToRoom(roomID, event)
 }
 

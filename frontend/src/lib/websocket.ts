@@ -104,13 +104,10 @@ export const WS_EVENTS = {
   ROOM_CLOSED: "room_closed",
   GAME_STARTED: "game_started",
   GAME_START: "game_start",
-  COUNTDOWN_START: "countdown_start",
-  // 現在の"countdown"イベントはゲーム開始前とゲーム終了時の両方で使用されており、
-  // フロントエンド側で混同が発生しています。
-  // 以下のように分離することを推奨します：
-  // - ゲーム開始前: "pre_game_countdown" など
-  // - ゲーム終了時: "end_game_countdown" など
-  COUNTDOWN: "countdown",
+  COUNTDOWN_START_GAME: "countdown_start_game",  // ゲーム開始時のカウントダウン開始
+  COUNTDOWN_GAME: "countdown_game",              // ゲーム開始時のカウントダウン
+  COUNTDOWN_START_END: "countdown_start_end",    // ゲーム終了時のカウントダウン開始
+  COUNTDOWN_END_GAME: "countdown_end_game",      // ゲーム終了時のカウントダウン
   BOARD_UPDATED: "board_updated",
   RESULT_CLOSED: "result_closed",
   GAME_ENDED: "game_ended",
@@ -306,16 +303,24 @@ export class WebSocketManager {
         this.addMessage(`🎮 ゲーム開始: ${gameStartedContent.message}`);
         break;
 
-      case WS_EVENTS.COUNTDOWN_START:
-        const countdownStartContent = wsEvent.content as CountdownEventContent;
-        this.addMessage(
-          `⏰ カウントダウン開始: ${countdownStartContent.countdown}秒`
-        );
+      case WS_EVENTS.COUNTDOWN_START_GAME:
+        const countdownStartGameContent = wsEvent.content as CountdownEventContent;
+        this.addMessage(`⏰ ゲーム開始時のカウントダウン開始: ${countdownStartGameContent.countdown}秒`);
         break;
 
-      case WS_EVENTS.COUNTDOWN:
-        const countdownContent = wsEvent.content as CountdownEventContent;
-        this.addMessage(`⏱️ カウントダウン: ${countdownContent.count}`);
+      case WS_EVENTS.COUNTDOWN_GAME:
+        const countdownGameContent = wsEvent.content as CountdownEventContent;
+        this.addMessage(`⏱️ ゲーム開始時のカウントダウン: ${countdownGameContent.count}`);
+        break;
+
+      case WS_EVENTS.COUNTDOWN_START_END:
+        const countdownStartEndContent = wsEvent.content as CountdownEventContent;
+        this.addMessage(`⏰ ゲーム終了時のカウントダウン開始: ${countdownStartEndContent.countdown}秒`);
+        break;
+
+      case WS_EVENTS.COUNTDOWN_END_GAME:
+        const countdownEndGameContent = wsEvent.content as CountdownEventContent;
+        this.addMessage(`⏰ ゲーム終了時のカウントダウン: ${countdownEndGameContent.countdown}秒`);
         break;
 
       case WS_EVENTS.BOARD_UPDATED:
