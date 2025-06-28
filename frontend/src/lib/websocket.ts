@@ -105,6 +105,11 @@ export const WS_EVENTS = {
   GAME_STARTED: "game_started",
   GAME_START: "game_start",
   COUNTDOWN_START: "countdown_start",
+  // 現在の"countdown"イベントはゲーム開始前とゲーム終了時の両方で使用されており、
+  // フロントエンド側で混同が発生しています。
+  // 以下のように分離することを推奨します：
+  // - ゲーム開始前: "pre_game_countdown" など
+  // - ゲーム終了時: "end_game_countdown" など
   COUNTDOWN: "countdown",
   BOARD_UPDATED: "board_updated",
   RESULT_CLOSED: "result_closed",
@@ -134,7 +139,10 @@ export class WebSocketManager {
 
   // WebSocket接続関数
   connect(): void {
-    if (this.isConnecting.value || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
+    if (
+      this.isConnecting.value ||
+      (this.ws && this.ws.readyState === WebSocket.OPEN)
+    ) {
       return;
     }
 
@@ -199,7 +207,9 @@ export class WebSocketManager {
           clearTimeout(this.connectTimeout);
           this.connectTimeout = null;
         }
-        console.log(`WebSocket接続が閉じられました - Code: ${event.code}, Reason: ${event.reason}`);
+        console.log(
+          `WebSocket接続が閉じられました - Code: ${event.code}, Reason: ${event.reason}`
+        );
         this.isConnected.value = false;
         this.isConnecting.value = false;
 
@@ -229,7 +239,9 @@ export class WebSocketManager {
     switch (wsEvent.event) {
       case WS_EVENTS.CONNECTION:
         const connectionContent = wsEvent.content as ConnectionEventContent;
-        this.addMessage(`🔗 接続確立: ClientID: ${connectionContent.client_id}, UserID: ${connectionContent.user_id}`);
+        this.addMessage(
+          `🔗 接続確立: ClientID: ${connectionContent.client_id}, UserID: ${connectionContent.user_id}`
+        );
         break;
 
       case WS_EVENTS.PLAYER_JOINED:
@@ -242,17 +254,25 @@ export class WebSocketManager {
 
       case WS_EVENTS.PLAYER_READY:
         const readyContent = wsEvent.content as PlayerEventContent;
-        this.addMessage(`✅ プレイヤー準備完了: ${readyContent.user_name} が準備完了`);
+        this.addMessage(
+          `✅ プレイヤー準備完了: ${readyContent.user_name} が準備完了`
+        );
         break;
 
       case WS_EVENTS.PLAYER_CANCELED:
         const canceledContent = wsEvent.content as PlayerEventContent;
-        this.addMessage(`❌ プレイヤー準備キャンセル: ${canceledContent.user_name} が準備をキャンセル`);
+        this.addMessage(
+          `❌ プレイヤー準備キャンセル: ${canceledContent.user_name} が準備をキャンセル`
+        );
         break;
 
       case WS_EVENTS.PLAYER_ALL_READY:
         const allReadyContent = wsEvent.content as PlayerEventContent;
-        this.addMessage(`🎉 全プレイヤー準備完了: ${allReadyContent.message || "All players are ready!"}`);
+        this.addMessage(
+          `🎉 全プレイヤー準備完了: ${
+            allReadyContent.message || "All players are ready!"
+          }`
+        );
         break;
 
       case WS_EVENTS.PLAYER_LEFT:
@@ -266,13 +286,19 @@ export class WebSocketManager {
       case WS_EVENTS.ROOM_STATE_CHANGED:
         const roomStateContent = wsEvent.content as RoomStateEventContent;
         this.addMessage(
-          `🏠 部屋状態変更: ${roomStateContent.state}, プレイヤー数: ${roomStateContent.players?.length || 0}`
+          `🏠 部屋状態変更: ${roomStateContent.state}, プレイヤー数: ${
+            roomStateContent.players?.length || 0
+          }`
         );
         break;
 
       case WS_EVENTS.ROOM_CLOSED:
         const roomClosedContent = wsEvent.content as RoomClosedEventContent;
-        this.addMessage(`🔒 ルームクローズ: ${roomClosedContent.message || "Room has been closed"}`);
+        this.addMessage(
+          `🔒 ルームクローズ: ${
+            roomClosedContent.message || "Room has been closed"
+          }`
+        );
         break;
 
       case WS_EVENTS.GAME_STARTED:
@@ -282,7 +308,9 @@ export class WebSocketManager {
 
       case WS_EVENTS.COUNTDOWN_START:
         const countdownStartContent = wsEvent.content as CountdownEventContent;
-        this.addMessage(`⏰ カウントダウン開始: ${countdownStartContent.countdown}秒`);
+        this.addMessage(
+          `⏰ カウントダウン開始: ${countdownStartContent.countdown}秒`
+        );
         break;
 
       case WS_EVENTS.COUNTDOWN:
@@ -302,13 +330,19 @@ export class WebSocketManager {
         this.addMessage(`🏁 ゲーム終了: ${gameEndedContent.message}`);
         if (gameEndedContent.final_scores) {
           this.addMessage(
-            `📊 最終スコア: ${gameEndedContent.final_scores.map((s) => `${s.user_name}: ${s.score}点`).join(", ")}`
+            `📊 最終スコア: ${gameEndedContent.final_scores
+              .map((s) => `${s.user_name}: ${s.score}点`)
+              .join(", ")}`
           );
         }
         break;
 
       default:
-        this.addMessage(`📨 未知のイベント: ${wsEvent.event} - ${JSON.stringify(wsEvent.content)}`);
+        this.addMessage(
+          `📨 未知のイベント: ${wsEvent.event} - ${JSON.stringify(
+            wsEvent.content
+          )}`
+        );
     }
   }
 
@@ -331,10 +365,15 @@ export class WebSocketManager {
     }
 
     this.reconnectAttempts++;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts - 1), 30000); // 指数バックオフ（最大30秒）
+    const delay = Math.min(
+      1000 * Math.pow(2, this.reconnectAttempts - 1),
+      30000
+    ); // 指数バックオフ（最大30秒）
 
     this.addMessage(
-      `🔄 ${delay / 1000}秒後に再接続を試行します... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+      `🔄 ${delay / 1000}秒後に再接続を試行します... (${
+        this.reconnectAttempts
+      }/${this.maxReconnectAttempts})`
     );
 
     setTimeout(() => {
@@ -413,7 +452,10 @@ export class WebSocketManager {
 }
 
 // WebSocket接続用のComposable関数
-export function useWebSocket(wsUrl: string, onMessage?: (event: WebSocketEvent) => void) {
+export function useWebSocket(
+  wsUrl: string,
+  onMessage?: (event: WebSocketEvent) => void
+) {
   const manager = new WebSocketManager(wsUrl, onMessage);
 
   return {
@@ -432,7 +474,9 @@ export function useWebSocket(wsUrl: string, onMessage?: (event: WebSocketEvent) 
     destroy: () => manager.destroy(),
     getReconnectAttempts: () => manager.getReconnectAttempts(),
     getMaxReconnectAttempts: () => manager.getMaxReconnectAttempts(),
-    setMessageHandler: (handler: (event: WebSocketEvent) => void) => manager.setMessageHandler(handler),
-    addMessageHandler: (handler: (event: WebSocketEvent) => void) => manager.addMessageHandler(handler),
+    setMessageHandler: (handler: (event: WebSocketEvent) => void) =>
+      manager.setMessageHandler(handler),
+    addMessageHandler: (handler: (event: WebSocketEvent) => void) =>
+      manager.addMessageHandler(handler),
   };
 }

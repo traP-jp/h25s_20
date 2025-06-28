@@ -274,29 +274,25 @@ onMounted(() => {
       case WS_EVENTS.COUNTDOWN_START:
         console.log("Countdown start event received");
         showStartModal.value = false; // スタートモーダルを閉じてゲーム画面に移行
-        // ゲーム開始準備中は時間をプレースホルダー状態に
-        gameTime.value = -1;
-        gameStarted.value = false; // まだゲームは開始していない
-        countdown.value = -1; // カウントダウンをリセット
-        console.log("Countdown start - gameStarted:", gameStarted.value, "gameTime:", gameTime.value);
+        gameTime.value = -1; // 時間をプレースホルダー状態にリセット
         break;
 
       case WS_EVENTS.COUNTDOWN:
-        console.log("Countdown event received:", event.content, "gameStarted:", gameStarted.value);
+        console.log("Countdown event received:", event.content);
+        // TODO: バックエンド側でイベントを区別してください
+        // 現在の問題：ゲーム開始前のカウントダウンとゲーム終了時のカウントダウンが
+        // 同じ"countdown"イベントで送信されているため、フロントエンド側で混同が発生しています
+        //
+        // 推奨解決策：
+        // 1. ゲーム開始前: "pre_game_countdown" or "start_countdown"
+        // 2. ゲーム終了時: "end_game_countdown" or "result_countdown"
+        // のように異なるイベント名を使用してください
         if (
           event.content &&
           typeof event.content === "object" &&
           "count" in event.content
         ) {
-          const countValue = (event.content as any).count;
-          // ゲーム開始前のカウントダウンのみ処理
-          // ゲームが開始されている場合は完全に無視
-          if (!gameStarted.value) {
-            countdown.value = countValue;
-            console.log("Setting pre-game countdown:", countValue);
-          } else {
-            console.log("Ignoring countdown during game:", countValue);
-          }
+          countdown.value = (event.content as any).count;
         }
         break;
 
@@ -304,12 +300,10 @@ onMounted(() => {
         console.log("Game start event received");
         countdown.value = -1; // カウントダウンを非表示
         showStartModal.value = false; // スタートモーダルを閉じる
-        gameStarted.value = true; // ゲーム開始フラグを設定
+        gameStarted.value = true;
         gameTime.value = 120; // 120秒ゲーム
         version.value = 0; // バージョンをリセット
         expression.value = ""; // 数式をリセット
-
-        console.log("Game started - gameStarted:", gameStarted.value, "gameTime:", gameTime.value);
 
         startGameTimer();
 
@@ -410,19 +404,12 @@ onMounted(() => {
 
       case WS_EVENTS.GAME_ENDED:
         console.log("Game ended event received");
-        
-        // ゲーム状態を即座にリセット（これにより以降のCOUNTDOWNイベントは無視される）
         gameStarted.value = false;
-        countdown.value = -1; // カウントダウンを非表示
-        
         // ゲーム終了時は時間を0で固定（プレースホルダーにリセットしない）
         if (gameTime.value > 0) {
           gameTime.value = 0; // 残り時間がある場合は0に設定
         }
         stopGameTimer();
-        
-        console.log("Game state reset - gameStarted:", gameStarted.value, "gameTime:", gameTime.value);
-        
         showResultModal.value = true;
 
         // 蓄積されたプレイヤースコア情報をgameResultStoreに反映
