@@ -60,6 +60,12 @@ const expression = defineModel<string>("expression", {
 const board = defineModel<number[]>("board");
 const version = defineModel<number>("version");
 
+// ハイライト機能用 現在の入力式をリアルタイムで親に送信
+const currentExpression = defineModel<string>("currentExpression", {
+  default: "",
+  type: String,
+});
+
 // 親コンポーネントからroomを注入
 import type { Room } from "@/lib/types";
 import { encodePoland } from "@/lib/solver/encodePoland";
@@ -149,6 +155,11 @@ watch(expression, async (newValue) => {
     }
   }
   // 提出に該当しない場合は何もしない（expressionの値はそのまま）
+});
+
+// ハイライト機能用 数式の変更をリアルタイムで親コンポーネントに通知
+watch(expression, (newValue) => {
+  currentExpression.value = newValue;
 });
 
 const viewExpression = computed(() => {
