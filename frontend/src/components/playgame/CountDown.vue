@@ -1,67 +1,60 @@
 <template>
-  <div v-if="time !== -1" class="countdown-display" :class="{ 'urgent': time <= 3 }">
-    <div class="count" :data-time="time">{{ time }}</div>
+  <div v-if="time !== -1 && isStartCountdown" class="countdown-overlay">
+    <!-- 背景オーバーレイ -->
+    <div class="backdrop"></div>
+    <!-- カウントダウン表示 -->
+    <div class="countdown-display">
+      <div class="count">{{ time }}</div>
+    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { defineProps, toRef } from "vue";
-const props = defineProps<{ time: number }>();
+const props = defineProps<{
+  time: number;
+  isStartCountdown?: boolean; // スタート時のカウントダウンかどうか
+}>();
 const time = toRef(props, "time");
+const { isStartCountdown = true } = props; // デフォルトはスタート時
 </script>
 
 <style scoped>
-.countdown-display {
+.countdown-overlay {
   position: fixed;
-  top: 20px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: linear-gradient(135deg, #ff6b6b, #ee5a24);
-  border: 3px solid #fff;
-  border-radius: 20px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  z-index: 1005;
-  pointer-events: none; /* タップ操作を通すため */
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 1000;
+  pointer-events: none;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 15px 25px;
-  backdrop-filter: blur(10px);
-  animation: countdown-pulse 1s ease-in-out infinite alternate;
+}
+
+.backdrop {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 1001;
+}
+
+.countdown-display {
+  position: relative;
+  z-index: 1002;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .count {
   color: #fff;
-  font-size: 4rem;
+  font-size: 8rem;
   font-weight: bold;
-  text-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-  min-width: 80px;
   text-align: center;
-}
-
-@keyframes countdown-pulse {
-  0% {
-    transform: translateX(-50%) scale(1);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-  }
-  100% {
-    transform: translateX(-50%) scale(1.05);
-    box-shadow: 0 12px 40px rgba(255, 107, 107, 0.4);
-  }
-}
-
-/* 残り時間が少ない時の緊急感のあるスタイル */
-.countdown-display.urgent {
-  background: linear-gradient(135deg, #ff3838, #c44569);
-  animation: countdown-urgent 0.5s ease-in-out infinite alternate;
-}
-
-@keyframes countdown-urgent {
-  0% {
-    transform: translateX(-50%) scale(1);
-  }
-  100% {
-    transform: translateX(-50%) scale(1.1);
-  }
 }
 </style>

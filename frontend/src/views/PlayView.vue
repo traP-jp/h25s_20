@@ -5,12 +5,21 @@
         <TextMark text="score" bgColor="#ffdd44" />
         <div :class="$style.score">{{ gameScore }}</div>
         <TextMark text="time" bgColor="#ff4400" />
-        <div :class="$style.time">{{ formatTime(gameTime) }}</div>
+        <div
+          :class="[
+            $style.time,
+            getTimeClass(gameTime) && $style[getTimeClass(gameTime)],
+          ]"
+        >
+          {{ isTimePlaceholder(gameTime) ? "xx:xx" : formatTime(gameTime) }}
+        </div>
       </div>
       <div :class="$style.right">
         <TextMark text="players" bgColor="#bb0000" :class="$style.playerMark" />
         <OpponentInfo
-          v-for="player in Array.from(playerScores.values()).sort((a, b) => b.score - a.score)"
+          v-for="player in Array.from(playerScores.values()).sort(
+            (a, b) => b.score - a.score
+          )"
           :key="player.name"
           :id="player.name"
           :score="player.score"
@@ -18,7 +27,11 @@
       </div>
     </div>
     <div :class="$style.board">
-      <MainGameBoard v-model:board="board" :highlighted-numbers="highlightedNumbers" />
+      <MainGameBoard
+        v-model:board="board"
+        :highlighted-numbers="highlightedNumbers"
+        :is-disabled="countdown > 0"
+      />
     </div>
 
     <div :class="$style.inputbox">
@@ -32,18 +45,30 @@
     </div>
 
     <StartModal v-model:showStartModal="showStartModal" />
-    <ResultModal v-model:showResultModal="showResultModal" v-model:showStartModal="showStartModal" />
+    <ResultModal
+      v-model:showResultModal="showResultModal"
+      v-model:showStartModal="showStartModal"
+    />
 
     <TopBar :room="currentRoom" />
     <!-- Debug button to simulate countdown (replace with WebSocket callback in production) -->
     <!-- <button @click="debugStartCountdown(3)">Debug Countdown</button> -->
-    <CountDown v-if="countdown > 0" :time="countdown" />
+    <CountDown
+      v-if="countdown > 0 && !gameStarted"
+      :time="countdown"
+      :isStartCountdown="true"
+    />
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, watch, computed } from "vue";
-import { useWebSocketStore, useGameResultStore, useRoomPlayersStore, useCurrentRoomStore } from "@/store";
+import {
+  useWebSocketStore,
+  useGameResultStore,
+  useRoomPlayersStore,
+  useCurrentRoomStore,
+} from "@/store";
 import TopBar from "@/components/playgame/TopBar.vue";
 import type { Room } from "@/lib/types";
 import { WS_EVENTS, type WebSocketEvent } from "@/lib/websocket";
@@ -70,13 +95,15 @@ const roomPlayersStore = useRoomPlayersStore();
 const currentRoomStore = useCurrentRoomStore();
 
 // ゲーム状態
-const gameTime = ref(60); // 初期時間60秒
+const gameTime = ref(-1); // 初期状態は-1（プレースホルダー表示）
 const gameStarted = ref(false);
 const countdown = ref(-1); // -1 means hide the countdown screen
 const expression = ref("");
 
 // 各プレイヤーのリアルタイムスコアを追跡
-const playerScores = ref<Map<string, { name: string; score: number }>>(new Map());
+const playerScores = ref<Map<string, { name: string; score: number }>>(
+  new Map()
+);
 
 const version = ref(0); // フォーミュラのバージョン管理
 
@@ -89,7 +116,10 @@ function startGameTimer() {
   gameTimer = setInterval(() => {
     if (gameTime.value > 0) {
       gameTime.value--;
-    } else {
+      // 時間が0になってもまだゲームが終了していない場合は継続
+      // サーバーからのGAME_ENDEDイベントを待つ
+    } else if (gameTime.value === 0) {
+      // 0秒になったら一旦タイマーを停止するが、ゲーム状態は維持
       stopGameTimer();
     }
   }, 1000);
@@ -174,7 +204,11 @@ onMounted(() => {
     switch (event.event) {
       case WS_EVENTS.PLAYER_JOINED:
         console.log("Player joined event received:", event.content);
-        if (event.content && typeof event.content === "object" && "room" in event.content) {
+        if (
+          event.content &&
+          typeof event.content === "object" &&
+          "room" in event.content
+        ) {
           const roomContent = event.content as any;
           if (roomContent.room && roomContent.room.players) {
             // ルームプレイヤーストアを更新
@@ -183,14 +217,21 @@ onMounted(() => {
               is_ready: player.is_ready,
             }));
             roomPlayersStore.updatePlayers(roomPlayers);
-            console.log("Updated room players after PLAYER_JOINED:", roomPlayers);
+            console.log(
+              "Updated room players after PLAYER_JOINED:",
+              roomPlayers
+            );
           }
         }
         break;
 
       case WS_EVENTS.PLAYER_READY:
         console.log("Player ready event received:", event.content);
-        if (event.content && typeof event.content === "object" && "user_name" in event.content) {
+        if (
+          event.content &&
+          typeof event.content === "object" &&
+          "user_name" in event.content
+        ) {
           const playerContent = event.content as any;
           roomPlayersStore.setPlayerReady(playerContent.user_name, true);
           console.log(`Player ${playerContent.user_name} is now ready`);
@@ -199,7 +240,11 @@ onMounted(() => {
 
       case WS_EVENTS.PLAYER_CANCELED:
         console.log("Player canceled event received:", event.content);
-        if (event.content && typeof event.content === "object" && "user_name" in event.content) {
+        if (
+          event.content &&
+          typeof event.content === "object" &&
+          "user_name" in event.content
+        ) {
           const playerContent = event.content as any;
           roomPlayersStore.setPlayerReady(playerContent.user_name, false);
           console.log(`Player ${playerContent.user_name} canceled ready state`);
@@ -208,7 +253,11 @@ onMounted(() => {
 
       case WS_EVENTS.PLAYER_LEFT:
         console.log("Player left event received:", event.content);
-        if (event.content && typeof event.content === "object" && "room" in event.content) {
+        if (
+          event.content &&
+          typeof event.content === "object" &&
+          "room" in event.content
+        ) {
           const roomContent = event.content as any;
           if (roomContent.room && roomContent.room.players) {
             // ルームプレイヤーストアを更新
@@ -224,11 +273,25 @@ onMounted(() => {
 
       case WS_EVENTS.COUNTDOWN_START:
         console.log("Countdown start event received");
+        showStartModal.value = false; // スタートモーダルを閉じてゲーム画面に移行
+        gameTime.value = -1; // 時間をプレースホルダー状態にリセット
         break;
 
       case WS_EVENTS.COUNTDOWN:
         console.log("Countdown event received:", event.content);
-        if (event.content && typeof event.content === "object" && "count" in event.content) {
+        // TODO: バックエンド側でイベントを区別してください
+        // 現在の問題：ゲーム開始前のカウントダウンとゲーム終了時のカウントダウンが
+        // 同じ"countdown"イベントで送信されているため、フロントエンド側で混同が発生しています
+        //
+        // 推奨解決策：
+        // 1. ゲーム開始前: "pre_game_countdown" or "start_countdown"
+        // 2. ゲーム終了時: "end_game_countdown" or "result_countdown"
+        // のように異なるイベント名を使用してください
+        if (
+          event.content &&
+          typeof event.content === "object" &&
+          "count" in event.content
+        ) {
           countdown.value = (event.content as any).count;
         }
         break;
@@ -271,7 +334,11 @@ onMounted(() => {
         console.log("Initialized player scores:", playerScores.value);
 
         // ボード情報があれば更新
-        if (event.content && typeof event.content === "object" && "board" in event.content) {
+        if (
+          event.content &&
+          typeof event.content === "object" &&
+          "board" in event.content
+        ) {
           const boardContent = event.content as any;
           if (boardContent.board && boardContent.board.content) {
             board.value = boardContent.board.content;
@@ -281,10 +348,17 @@ onMounted(() => {
 
       case WS_EVENTS.BOARD_UPDATED:
         console.log("Board updated event received:", event.content);
-        if (event.content && typeof event.content === "object" && "board" in event.content) {
+        if (
+          event.content &&
+          typeof event.content === "object" &&
+          "board" in event.content
+        ) {
           const boardContent = event.content as any;
           if (boardContent.board && boardContent.board.content) {
-            console.log("Updating board from WebSocket:", boardContent.board.content);
+            console.log(
+              "Updating board from WebSocket:",
+              boardContent.board.content
+            );
             board.value = boardContent.board.content;
           }
 
@@ -297,21 +371,30 @@ onMounted(() => {
             if (playerScores.value.has(userName)) {
               const playerData = playerScores.value.get(userName)!;
               playerData.score += gainScore;
-              console.log(`Updated score for ${playerData.name}: ${playerData.score} (+${gainScore})`);
+              console.log(
+                `Updated score for ${playerData.name}: ${playerData.score} (+${gainScore})`
+              );
             } else {
               // 新しいプレイヤーの場合、追加
               playerScores.value.set(userName, {
                 name: userName,
                 score: gainScore,
               });
-              console.log(`Added new player ${userName} with score: ${gainScore}`);
+              console.log(
+                `Added new player ${userName} with score: ${gainScore}`
+              );
               console.log("Current player scores:", playerScores.value);
             }
 
             // 自分のスコア更新ログ
             const currentUsername = webSocketStore.currentUsername;
             if (userName === currentUsername) {
-              console.log("Score updated (own submission):", gameScore.value, "gained:", gainScore);
+              console.log(
+                "Score updated (own submission):",
+                gameScore.value,
+                "gained:",
+                gainScore
+              );
             }
           }
 
@@ -321,20 +404,28 @@ onMounted(() => {
 
       case WS_EVENTS.GAME_ENDED:
         console.log("Game ended event received");
-        countdown.value = 0;
         gameStarted.value = false;
+        // ゲーム終了時は時間を0で固定（プレースホルダーにリセットしない）
+        if (gameTime.value > 0) {
+          gameTime.value = 0; // 残り時間がある場合は0に設定
+        }
         stopGameTimer();
         showResultModal.value = true;
 
         // 蓄積されたプレイヤースコア情報をgameResultStoreに反映
-        const finalScores = Array.from(playerScores.value.entries()).map(([userName, playerData]) => ({
-          user_name: userName,
-          score: playerData.score,
-        }));
+        const finalScores = Array.from(playerScores.value.entries()).map(
+          ([userName, playerData]) => ({
+            user_name: userName,
+            score: playerData.score,
+          })
+        );
 
         if (finalScores.length > 0) {
           gameResultStore.updatePlayers(finalScores);
-          console.log("Updated game result store with tracked scores:", finalScores);
+          console.log(
+            "Updated game result store with tracked scores:",
+            finalScores
+          );
         } else {
           console.warn("No player scores tracked during the game");
         }
@@ -365,17 +456,8 @@ onBeforeUnmount(() => {
 
 // 初期盤面を生成する関数
 function generateInitialBoard(): number[] {
-  // 1-9の数字をランダムに4つずつ選んで16個の配列を作成
-  const numbers = [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  const board: number[] = [];
-
-  // 各数字から4つまでランダムに選択
-  for (let i = 0; i < 16; i++) {
-    const randomIndex = Math.floor(Math.random() * numbers.length);
-    board.push(numbers[randomIndex]);
-  }
-
-  return board;
+  // WebSocketで盤面が送られてくるまでは空（0）で埋める
+  return new Array(16).fill(0);
 }
 
 const board = ref(generateInitialBoard());
@@ -389,7 +471,11 @@ watch(board, (newBoard: number[], oldBoard: number[]) => {
   console.log("Board updated:", newBoard);
 
   // ゲームが開始されていて、実際に盤面が変更された場合のみ送信
-  if (gameStarted.value && oldBoard && JSON.stringify(newBoard) !== JSON.stringify(oldBoard)) {
+  if (
+    gameStarted.value &&
+    oldBoard &&
+    JSON.stringify(newBoard) !== JSON.stringify(oldBoard)
+  ) {
     // スコア計算（簡易実装）
     const gainScore = calculateScoreGain(newBoard, oldBoard);
     sendBoardUpdate(newBoard, gainScore);
@@ -421,7 +507,28 @@ const gameScore = computed(() => {
 function formatTime(seconds: number): string {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
-  return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`;
+  return `${minutes.toString().padStart(2, "0")}:${remainingSeconds
+    .toString()
+    .padStart(2, "0")}`;
+}
+
+// 時間の状態に応じてCSSクラスを返す
+function getTimeClass(seconds: number): string {
+  if (isTimePlaceholder(seconds)) return "";
+
+  if (seconds <= 10 && seconds > 0) {
+    return "urgent-pulse";
+  } else if (seconds <= 30 && seconds > 0) {
+    return "warning";
+  }
+  return "";
+}
+
+// 時間がプレースホルダー状態かどうかを判定
+function isTimePlaceholder(seconds: number): boolean {
+  // ゲーム開始前（-1）またはundefined/nullの場合のみプレースホルダー
+  // ゲーム終了時の0秒は有効な時間として扱う
+  return seconds === undefined || seconds === null || seconds < 0;
 }
 
 const currentExpression = ref("");
@@ -507,6 +614,47 @@ watch(board, (newBoard: number[]) => console.log("Board updated:", newBoard));
 .time {
   font-size: 20px;
   font-weight: bold;
+  transition: color 0.3s ease;
+}
+
+/* 30秒以下で赤色に */
+.warning {
+  color: #ff4757 !important;
+}
+
+/* 10秒以下で強調アニメーション */
+.urgent-pulse {
+  color: #ff3838 !important;
+  animation: time-urgent 0.8s ease-in-out infinite !important;
+  font-weight: bold !important;
+}
+
+@keyframes time-urgent {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+    text-shadow: 0 0 0px rgba(255, 56, 56, 0);
+  }
+  25% {
+    transform: scale(1.3);
+    opacity: 0.9;
+    text-shadow: 0 0 15px rgba(255, 56, 56, 0.8);
+  }
+  50% {
+    transform: scale(1.2);
+    opacity: 0.7;
+    text-shadow: 0 0 25px rgba(255, 56, 56, 1);
+  }
+  75% {
+    transform: scale(1.25);
+    opacity: 0.9;
+    text-shadow: 0 0 10px rgba(255, 56, 56, 0.6);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    text-shadow: 0 0 0px rgba(255, 56, 56, 0);
+  }
 }
 
 .board {

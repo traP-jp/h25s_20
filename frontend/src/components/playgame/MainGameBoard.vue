@@ -1,11 +1,12 @@
 <template>
   <div :class="$style.gameboard">
-    <div :class="$style.grid">
+    <div :class="[$style.grid, { [$style.disabled]: isDisabled }]">
       <NumberPiece
         v-for="(num, idx) in board"
         :key="idx"
         :number="num"
         :is-highlighted="highlightedNumbers.includes(num)"
+        :is-disabled="isDisabled"
       />
     </div>
   </div>
@@ -17,9 +18,12 @@ import NumberPiece from "@/components/playgame/NumberPiece.vue";
 
 const board = defineModel<number[]>("board");
 
-defineProps<{
+const props = defineProps<{
   highlightedNumbers: number[];
+  isDisabled?: boolean;
 }>();
+
+const { isDisabled = false } = props;
 </script>
 
 <style module>
@@ -34,5 +38,11 @@ defineProps<{
   display: grid;
   grid-template-columns: repeat(4, auto);
   grid-gap: 10px;
+}
+
+.disabled {
+  opacity: 0.3;
+  pointer-events: none;
+  filter: grayscale(1);
 }
 </style>
