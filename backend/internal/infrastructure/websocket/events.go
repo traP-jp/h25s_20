@@ -16,13 +16,15 @@ const (
 	EventRoomClosed = "room_closed"
 
 	// ゲーム関連
-	EventGameStarted    = "game_started"
-	EventGameStart      = "game_start"
-	EventCountdownStart = "countdown_start"
-	EventCountdown      = "countdown"
-	EventBoardUpdated   = "board_updated"
-	EventResultClosed   = "result_closed"
-	EventGameEnded      = "game_ended"
+	EventGameStarted        = "game_started"
+	EventGameStart          = "game_start"
+	EventCountdownStartGame = "countdown_start_game" // ゲーム開始時のカウントダウン開始
+	EventCountdownGame      = "countdown_game"       // ゲーム開始時のカウントダウン
+	EventCountdownStartEnd  = "countdown_start_end"  // ゲーム終了時のカウントダウン開始
+	EventCountdownEndGame   = "countdown_end_game"   // ゲーム終了時のカウントダウン
+	EventBoardUpdated       = "board_updated"
+	EventResultClosed       = "result_closed"
+	EventGameEnded          = "game_ended"
 )
 
 // 統一されたWebSocketイベントの基本構造
@@ -222,9 +224,9 @@ func NewGameStartEvent(roomID int, message string) WebSocketEvent {
 	}
 }
 
-func NewCountdownStartEvent(roomID int, message string, countdown int) WebSocketEvent {
+func NewCountdownStartGameEvent(roomID int, message string, countdown int) WebSocketEvent {
 	return WebSocketEvent{
-		Event: EventCountdownStart,
+		Event: EventCountdownStartGame,
 		Content: CountdownEventContent{
 			BaseEventContent: BaseEventContent{
 				RoomID:  roomID,
@@ -235,14 +237,39 @@ func NewCountdownStartEvent(roomID int, message string, countdown int) WebSocket
 	}
 }
 
-func NewCountdownEvent(roomID int, count int) WebSocketEvent {
+func NewCountdownGameEvent(roomID int, count int) WebSocketEvent {
 	return WebSocketEvent{
-		Event: EventCountdown,
+		Event: EventCountdownGame,
 		Content: CountdownEventContent{
 			BaseEventContent: BaseEventContent{
 				RoomID: roomID,
 			},
 			Count: count,
+		},
+	}
+}
+
+func NewCountdownEndGameEvent(roomID int, count int) WebSocketEvent {
+	return WebSocketEvent{
+		Event: EventCountdownEndGame,
+		Content: CountdownEventContent{
+			BaseEventContent: BaseEventContent{
+				RoomID: roomID,
+			},
+			Count: count,
+		},
+	}
+}
+
+func NewCountdownStartEndEvent(roomID int, message string, countdown int) WebSocketEvent {
+	return WebSocketEvent{
+		Event: EventCountdownStartEnd,
+		Content: CountdownEventContent{
+			BaseEventContent: BaseEventContent{
+				RoomID:  roomID,
+				Message: message,
+			},
+			Countdown: countdown,
 		},
 	}
 }
