@@ -30,23 +30,29 @@ func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
 	// ユーザー名をクエリパラメータから取得
 	username := c.QueryParam("username")
 	if username == "" {
+		log.Error().Msg("Username is required for WebSocket connection")
+		// WebSocketアップグレード前なので、まだJSONレスポンスが可能
 		return c.JSON(400, map[string]string{"error": "username is required"})
 	}
 
 	// データベースからユーザーを検索
 	user, err := h.userUsecase.GetUserByUsername(c.Request().Context(), username)
 	if err != nil {
+		log.Error().Err(err).Str("username", username).Msg("User not found for WebSocket connection")
+		// WebSocketアップグレード前なので、まだJSONレスポンスが可能
 		return c.JSON(404, map[string]string{"error": "user not found"})
 	}
 
 	userID := int(user.ID)
 
-	// WebSocket接続をアップグレード
+	// WebSocket接続をアップグレード（CORS対応のオプション追加）
 	conn, err := websocket.Accept(c.Response().Writer, c.Request(), &websocket.AcceptOptions{
-		Subprotocols: []string{"echo"},
+		Subprotocols:   []string{"echo"},
+		OriginPatterns: []string{"localhost:5173"},
 	})
 	if err != nil {
 		log.Error().Err(err).Msg("Failed to upgrade WebSocket connection")
+		// WebSocketアップグレード後はJSONレスポンスできないため、errorを返すのみ
 		return err
 	}
 
@@ -185,6 +191,18 @@ func (h *WebSocketHandler) SendPlayerEventToRoom(roomID int, eventType string, u
 	h.manager.SendEventToRoom(roomID, event)
 }
 
+// SendPlayerJoinedEventToRoom sends a player joined event with room information to all room members
+func (h *WebSocketHandler) SendPlayerJoinedEventToRoom(userID int, userName string, room wsManager.RoomInfo) {
+	event := wsManager.NewPlayerJoinedEvent(userID, userName, room)
+	h.manager.SendEventToRoom(room.ID, event)
+}
+
+// SendPlayerLeftEventToRoom sends a player left event with room information to all room members
+func (h *WebSocketHandler) SendPlayerLeftEventToRoom(userID int, userName string, room wsManager.RoomInfo) {
+	event := wsManager.NewPlayerLeftEvent(userID, userName, room)
+	h.manager.SendEventToRoom(room.ID, event)
+}
+
 // SendGameStartEventToRoom sends a game start event to all room members
 func (h *WebSocketHandler) SendGameStartEventToRoom(roomID int, message string) {
 	event := wsManager.NewGameStartEvent(roomID, message)
@@ -219,4 +237,47 @@ func (h *WebSocketHandler) SendGameStartBoardEventToRoom(roomID int, message str
 func (h *WebSocketHandler) SendGameEndEventToRoom(roomID int, message string) {
 	event := wsManager.NewGameEndEvent(roomID, message)
 	h.manager.SendEventToRoom(roomID, event)
+}
+
+// SendPlayerAllReadyEventToRoom sends a player all ready event to all room members
+func (h *WebSocketHandler) SendPlayerAllReadyEventToRoom(roomID int, message string) {
+	event := wsManager.NewPlayerAllReadyEvent(roomID, message)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+func (h *WebSocketHandler) SendRoomClosedEventToRoom(roomID int, message string) {
+	event := wsManager.NewRoomClosedEvent(roomID, message)
+	h.manager.SendEventToRoom(roomID, event)
+}
+
+// 遅延削除システム管理機能
+
+// GetDisconnectedUsersInfo returns information about users scheduled for deletion
+func (h *WebSocketHandler) GetDisconnectedUsersInfo() map[int]*wsManager.UserState {
+	return h.manager.GetDisconnectedUsers()
+}
+
+// ForceDeleteDisconnectedUser immediately deletes a user from disconnected users
+func (h *WebSocketHandler) ForceDeleteDisconnectedUser(userID int) bool {
+	return h.manager.ForceDeleteUser(userID)
+}
+
+// IsUserDisconnected checks if a user is in the disconnected users list
+func (h *WebSocketHandler) IsUserDisconnected(userID int) bool {
+	return h.manager.IsUserDisconnected(userID)
+}
+
+// GetDeleteTimeout returns the current delete timeout duration
+func (h *WebSocketHandler) GetDeleteTimeout() time.Duration {
+	return h.manager.GetDeleteTimeout()
+}
+
+// SetDeleteTimeout sets a new delete timeout duration
+func (h *WebSocketHandler) SetDeleteTimeout(timeout time.Duration) {
+	h.manager.SetDeleteTimeout(timeout)
+}
+
+// GetDisconnectedUserStats returns statistics about disconnected users
+func (h *WebSocketHandler) GetDisconnectedUserStats() map[string]interface{} {
+	return h.manager.GetDisconnectedUserStats()
 }

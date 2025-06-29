@@ -3,16 +3,16 @@ info:
   title: hs_25_20_server API
   version: "1.0.0"
 servers:
-  - url: 'http://localhost:8080/api'
+  - url: "http://10ten.trap.show/api"
     description: ローカル環境
-  - url: 'https://YOUR_PRODUCTION_URL'
+  - url: "https://YOUR_PRODUCTION_URL"
     description: 本番環境
 paths:
   /health:
     get:
       summary: Health check endpoint
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
@@ -30,40 +30,40 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/UserCreate'
+              $ref: "#/components/schemas/UserCreate"
       responses:
-        '200':
+        "200":
           description: User logged in successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '201':
+                $ref: "#/components/schemas/AuthResponse"
+        "201":
           description: User created successfully
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/AuthResponse'
-        '400':
+                $ref: "#/components/schemas/AuthResponse"
+        "400":
           description: Invalid request
-        '401':
+        "401":
           description: Invalid credentials for existing user
-        '500':
+        "500":
           description: Internal server error
 
   /rooms:
     get:
       summary: Get a list of rooms
       responses:
-        '200':
+        "200":
           description: A list of rooms
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/Room'
-        '500':
+                  $ref: "#/components/schemas/Room"
+        "500":
           description: Internal server error
   /rooms/{roomId}/actions:
     post:
@@ -96,15 +96,15 @@ paths:
               required:
                 - action
       responses:
-        '204':
+        "204":
           description: Action successful
-        '400':
+        "400":
           description: Invalid request
-        '403':
+        "403":
           description: Forbidden (e.g. permission denied for START)
-        '409':
+        "409":
           description: Conflict (The action cannot be performed in the current state)
-        '500':
+        "500":
           description: Internal server error
   /rooms/{roomId}/formulas:
     post:
@@ -134,19 +134,19 @@ paths:
                 - version
                 - formula
       responses:
-        '200':
+        "200":
           description: Formula submission was successful.
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/Board'
-        '400':
+                $ref: "#/components/schemas/Board"
+        "400":
           description: Invalid request (e.g. invalid formula format)
-        '403':
+        "403":
           description: Forbidden (e.g. user is not in a room)
-        '409':
+        "409":
           description: Conflict (The board state has been updated by another user)
-        '500':
+        "500":
           description: Internal server error
   /rooms/{roomId}/result:
     get:
@@ -160,17 +160,17 @@ paths:
             type: integer
             example: 1
       responses:
-        '200':
+        "200":
           description: A list of user scores for the room
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/RoomResultItem'
-        '403':
+                  $ref: "#/components/schemas/RoomResultItem"
+        "403":
           description: Forbidden (e.g., user not in a room)
-        '500':
+        "500":
           description: Internal server error
 
 components:
@@ -233,8 +233,7 @@ components:
         users:
           type: array
           items:
-            type: string
-            example: "player1"
+            $ref: "#/components/schemas/User"
         isOpened:
           type: boolean
           example: true
@@ -243,6 +242,19 @@ components:
         - roomName
         - users
         - isOpened
+
+    User:
+      type: object
+      properties:
+        username:
+          type: string
+          example: "player1"
+        isReady:
+          type: boolean
+          example: false
+      required:
+        - username
+        - isReady
 
     AuthResponse:
       type: object

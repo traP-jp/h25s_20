@@ -1,24 +1,13 @@
 <template>
   <div :class="$style.container">
-    <ResultUser
-      v-for="player in players"
-      :key="player.id"
-      :id="player.id"
-      :name="player.name"
-      :rank="player.rank"
-      :score="player.score"
-    />
+    <ResultUser v-for="player in gameResultStore.players" :player="player" />
   </div>
 </template>
 <script setup lang="ts">
 import ResultUser from "@/components/playgame/result/ResultUser.vue";
-import { ref } from "vue";
+import { useGameResultStore } from "@/store";
 
-const players = [
-  { id: 0, name: "kitsne", rank: 1, score: 100 },
-  { id: 1, name: "mikannkann", rank: 2, score: 80 },
-  { id: 2, name: "rurun", rank: 3, score: 60 },
-];
+const gameResultStore = useGameResultStore();
 </script>
 
 <style module>

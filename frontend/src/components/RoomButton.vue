@@ -1,15 +1,15 @@
 <template>
-  <button :disabled="room.status === 'closed'" @click="emit('click')" :class="$style.button">
-    <div :class="$style.name">{{ room.name }}</div>
+  <button :disabled="!room.isOpened" @click="emit('click')" :class="$style.button">
+    <div :class="$style.name">{{ room.roomName }}</div>
     <div :class="$style.icons">
       <UserIcon
         :class="$style.icon"
-        v-for="player in room.players.slice(0, 3)"
-        :key="player.id"
-        :id="player.id"
+        v-for="player in room.users.slice(0, 3)"
+        :key="player.username"
+        :id="player.username"
         :size="20"
       />
-      <div :class="$style.surplus" v-if="room.players.length > 3">+{{ room.players.length - 3 }}</div>
+      <div :class="$style.surplus" v-if="room.users.length > 3">+{{ room.users.length - 3 }}</div>
     </div>
   </button>
 </template>

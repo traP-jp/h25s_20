@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { computed, ref, watch } from "vue";
 import UserIcon from "@/components/UserIcon.vue";
 import { Icon } from "@iconify/vue";
 
@@ -16,28 +15,30 @@ const props = withDefaults(
 );
 
 console.log(props.isReady);
-
 </script>
 
 <template>
   <div :class="$style.iconContainer">
     <UserIcon
-    :id="props.id"
-    :size="props.size"
-    :style="{
-      // borderColor: props.borderColor || 'transparent',
-      // borderWidth: props.borderWidth || '0px',
-      border: props.border || '0px solid transparent'
-    }"
-    :class="$style.userIcon"
+      :id="props.id"
+      :size="props.size"
+      :style="{
+        // borderColor: props.borderColor || 'transparent',
+        // borderWidth: props.borderWidth || '0px',
+        border: props.border || '0px solid transparent',
+      }"
+      :class="$style.userIcon"
     />
-    <Icon v-show="props.isReady" :icon="'fe:check'" :class="$style.checkIcon" :style="{border: props.border || '0px solid transparent'}" />
-
+    <Icon
+      v-show="props.isReady"
+      :icon="'fe:check'"
+      :class="$style.checkIcon"
+      :style="{ border: props.border || '0px solid transparent' }"
+    />
   </div>
 </template>
 
 <style module>
-
 .iconContainer {
   position: relative;
   display: inline-block;
@@ -60,5 +61,4 @@ console.log(props.isReady);
   align-items: center;
   justify-content: center;
 }
-
 </style>

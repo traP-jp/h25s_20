@@ -42,7 +42,7 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 	switch req.Action {
 	case models.JOIN:
-		_, err := h.roomUsecase.AddPlayerToRoom(roomId, player)
+		updatedRoom, err := h.roomUsecase.AddPlayerToRoom(roomId, player)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to join room: " + err.Error(),
@@ -59,14 +59,30 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 			}
 		}
 
-		// WebSocketでルーム全員に通知
+		// ルーム情報を構築
+		var playerInfos []wsManager.PlayerInfo
+		for _, p := range updatedRoom.Players {
+			playerInfos = append(playerInfos, wsManager.ConvertToPlayerInfo(
+				p.ID, p.UserName, p.IsReady, p.HasClosedResult, p.Score,
+			))
+		}
+
+		roomInfo := wsManager.ConvertToRoomInfo(
+			updatedRoom.ID,
+			updatedRoom.Name,
+			updatedRoom.State.String(),
+			updatedRoom.IsOpened,
+			playerInfos,
+		)
+
+		// WebSocketでルーム全員に通知（ルーム情報付き）
 		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerJoined, player.ID, player.UserName)
+			h.WebSocketHandler.SendPlayerJoinedEventToRoom(player.ID, player.UserName, roomInfo)
 		}
 		return c.NoContent(http.StatusNoContent)
 
 	case models.READY:
-		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, true)
+		updatedRoom, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, true)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to update ready status: " + err.Error(),
@@ -74,10 +90,20 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 		// WebSocketでルーム全員に通知
 		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerReady, player.ID, player.UserName)
+
+		// 全員準備完了チェック
+		if updatedRoom.AreAllPlayersReady() && len(updatedRoom.Players) > 0 {
+			h.WebSocketHandler.SendPlayerAllReadyEventToRoom(roomId, "All players are ready!")
+			// ルームがクローズされたことを通知
+			if !updatedRoom.IsOpened {
+				h.WebSocketHandler.SendRoomClosedEventToRoom(roomId, "Room is now closed")
+			}
+		}
+
 		return c.NoContent(http.StatusNoContent)
 
 	case models.CANCEL:
-		_, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, false)
+		updatedRoom, err := h.roomUsecase.UpdatePlayerReadyStatus(roomId, player.ID, false)
 		if err != nil {
 			return c.JSON(http.StatusInternalServerError, map[string]string{
 				"error": "Failed to cancel ready status: " + err.Error(),
@@ -85,6 +111,13 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerCanceled, player.ID, player.UserName)
+
+		// 全員準備完了状態から変更されたかチェック（必要に応じて通知）
+		if !updatedRoom.AreAllPlayersReady() {
+			// 必要に応じて「準備完了状態解除」イベントを送信
+			// 現在は特別な処理なし
+		}
+
 		return c.NoContent(http.StatusNoContent)
 
 	case models.START:
@@ -132,14 +165,30 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		// プレイヤーをルームから削除
-		_, err := h.roomUsecase.RemovePlayerFromRoom(roomId, player.ID)
+		updatedRoom, err := h.roomUsecase.RemovePlayerFromRoom(roomId, player.ID)
 		if err != nil {
 			// プレイヤーが見つからない場合でもエラーにしない（既に退出済みの可能性）
 		}
 
-		// WebSocketでの通知
-		if h.WebSocketHandler != nil {
-			h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerLeft, player.ID, player.UserName)
+		// ルーム情報を構築（退出後の状態）
+		if updatedRoom != nil && h.WebSocketHandler != nil {
+			var playerInfos []wsManager.PlayerInfo
+			for _, p := range updatedRoom.Players {
+				playerInfos = append(playerInfos, wsManager.ConvertToPlayerInfo(
+					p.ID, p.UserName, p.IsReady, p.HasClosedResult, p.Score,
+				))
+			}
+
+			roomInfo := wsManager.ConvertToRoomInfo(
+				updatedRoom.ID,
+				updatedRoom.Name,
+				updatedRoom.State.String(),
+				updatedRoom.IsOpened,
+				playerInfos,
+			)
+
+			// WebSocketでルーム全員に通知（ルーム情報付き）
+			h.WebSocketHandler.SendPlayerLeftEventToRoom(player.ID, player.UserName, roomInfo)
 		}
 
 		return c.NoContent(http.StatusNoContent)
@@ -319,10 +368,10 @@ func (h *Handler) handleGameStart(roomID int) {
 
 	// 3秒のカウントダウン
 	for i := 3; i > 0; i-- {
-		time.Sleep(1 * time.Second)
 		if h.WebSocketHandler != nil {
 			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
 		}
+		time.Sleep(1 * time.Second)
 	}
 
 	// カウントダウン完了後、ゲームを実際に開始
@@ -380,7 +429,6 @@ func (h *Handler) handleGameTimer(roomID int) {
 
 	// 10秒のカウントダウン
 	for i := 10; i > 0; i-- {
-		time.Sleep(1 * time.Second)
 
 		// 各秒でゲームがまだ進行中かチェック
 		room, err := h.roomUsecase.GetRoomByID(roomID)
@@ -391,6 +439,8 @@ func (h *Handler) handleGameTimer(roomID int) {
 		if h.WebSocketHandler != nil {
 			h.WebSocketHandler.SendCountdownEventToRoom(roomID, i)
 		}
+
+		time.Sleep(1 * time.Second)
 	}
 
 	// タイマー終了、ゲームを終了する
