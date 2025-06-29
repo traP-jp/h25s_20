@@ -60,7 +60,7 @@ const expression = defineModel<string>("expression", {
 const board = defineModel<number[]>("board");
 const version = defineModel<number>("version");
 
-// ハイライト機能用 現在の入力式をリアルタイムで親に送信
+// ハイライト機能用のModel
 const currentExpression = defineModel<string>("currentExpression", {
   default: "",
   type: String,
@@ -154,10 +154,11 @@ watch(expression, async (newValue) => {
       // エラー時も入力をそのまま残す
     }
   }
-  // 提出に該当しない場合は何もしない（expressionの値はそのまま）
   
   // ハイライト機能用 数式の変更をリアルタイムで親コンポーネントに通知
   currentExpression.value = newValue;
+
+  // 提出に該当しない場合は何もしない（expressionの値はそのまま）
 });
 
 const viewExpression = computed(() => {
