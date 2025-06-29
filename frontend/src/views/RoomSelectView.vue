@@ -73,7 +73,7 @@ async function handleFetchError(status: number) {
   }
 
   // その他のエラーでリトライ可能な場合は自動で再試行
-  if (retryCount.value < maxRetries) {
+  if (retryCount.value <= maxRetries) {
     retryCount.value++;
     console.log(`Auto-retrying to fetch rooms (attempt ${retryCount.value}/${maxRetries})`);
     setTimeout(() => {
