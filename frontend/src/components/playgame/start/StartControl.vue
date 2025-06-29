@@ -207,7 +207,7 @@ const onClickStart = async () => {
   min-width: 150px;
   box-sizing: border-box;
   text-align: center;
-  cursor: pointer
+  cursor: pointer;
 }
 
 .startBtn {
