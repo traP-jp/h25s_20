@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted, onBeforeUnmount } from "vue";
 import { useWebSocket } from "@/lib/websocket";
+import { getWsUrl } from "@/config/app";
 
 // 接続設定
-const wsUrl = "wss://10ten.trap.show/api/ws?username=debug_user";
+const wsUrl = getWsUrl("username=debug_user");
 
 // WebSocket接続の初期化
 const {

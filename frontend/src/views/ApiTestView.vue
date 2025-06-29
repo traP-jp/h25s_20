@@ -2,10 +2,55 @@
   <div class="api-test">
     <div class="header">
       <h1>API Test Console</h1>
+      
+      <!-- 現在の設定情報表示 -->
+      <div class="config-status">
+        <h3>🔧 現在の設定状況</h3>
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="label">環境:</span>
+            <span class="value" :class="environmentClass">{{ currentEnvironment }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">API URL:</span>
+            <span class="value">{{ config.api.baseUrl }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">WebSocket URL:</span>
+            <span class="value">{{ config.api.wsBaseUrl }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">設定ソース:</span>
+            <span class="value" :class="configSourceClass">{{ configSource }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">実際の接続先:</span>
+            <span class="value" :class="connectionTargetClass">{{ baseUrl || config.api.baseUrl }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">接続状態:</span>
+            <span class="value" :class="connectionStatusClass">{{ connectionStatus }}</span>
+            <button @click="testConnection" :disabled="testing" class="test-btn">
+              {{ testing ? '確認中...' : '接続確認' }}
+            </button>
+          </div>
+        </div>
+        <div class="env-vars">
+          <h4>📋 環境変数</h4>
+          <div class="env-list">
+            <div v-for="(value, key) in envVars" :key="key" class="env-item">
+              <span class="env-key">{{ key }}:</span>
+              <span class="env-value">{{ value || '(未設定)' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="server-config">
         <label>
           Base URL:
-          <input v-model="baseUrl" type="text" placeholder="https://10ten.trap.show/api" />
+          <input v-model="baseUrl" type="text" :placeholder="config.api.baseUrl" />
+          <small>空の場合は上記の設定を使用</small>
         </label>
         <label>
           JWT Token:
@@ -104,12 +149,114 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { ref, reactive, computed } from "vue";
 import { apiClient, type ApiResponse } from "@/api";
+import { getConfig } from "@/config/app";
 
 const loading = ref(false);
-const baseUrl = ref("https://10ten.trap.show/api");
+const testing = ref(false);
+const connectionStatus = ref('未確認');
+const config = getConfig();
+const baseUrl = ref("");
 const authToken = ref("");
+
+// デバッグ情報の計算プロパティ
+const currentEnvironment = computed(() => {
+  // 環境変数で明示的に設定されているかチェック
+  const hasCustomUrl = import.meta.env.VITE_API_BASE_URL;
+  const isProd = import.meta.env.PROD;
+  
+  if (hasCustomUrl) {
+    // 環境変数で設定されている場合、URLの内容で判定
+    const customUrl = import.meta.env.VITE_API_BASE_URL;
+    if (customUrl.includes('localhost') || customUrl.includes('127.0.0.1')) {
+      return '開発環境 (env設定)';
+    } else if (customUrl.includes('10ten.trap.show')) {
+      return '本番環境 (env設定)';
+    } else {
+      return 'カスタム環境';
+    }
+  }
+  
+  return isProd ? '本番環境' : '開発環境';
+});
+
+const environmentClass = computed(() => {
+  const env = currentEnvironment.value;
+  if (env.includes('本番')) return 'env-production';
+  if (env.includes('カスタム')) return 'env-custom';
+  return 'env-development';
+});
+
+const configSource = computed(() => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return '環境変数 (.env)';
+  }
+  if (import.meta.env.PROD) {
+    return '自動設定 (本番)';
+  }
+  return '自動設定 (開発)';
+});
+
+const configSourceClass = computed(() => {
+  const source = configSource.value;
+  if (source.includes('環境変数')) return 'source-env';
+  return 'source-file';
+});
+
+const connectionTargetClass = computed(() => {
+  const target = baseUrl.value || config.api.baseUrl;
+  if (target.includes('localhost') || target.includes('127.0.0.1')) {
+    return 'target-local';
+  }
+  if (target.includes('10ten.trap.show')) {
+    return 'target-production';
+  }
+  return 'target-other';
+});
+
+const envVars = computed(() => {
+  return {
+    'VITE_API_BASE_URL': import.meta.env.VITE_API_BASE_URL,
+    'VITE_WS_BASE_URL': import.meta.env.VITE_WS_BASE_URL,
+    'MODE': import.meta.env.MODE,
+    'PROD': import.meta.env.PROD,
+    'DEV': import.meta.env.DEV,
+  };
+});
+
+const connectionStatusClass = computed(() => {
+  const status = connectionStatus.value;
+  if (status === '接続成功') return 'status-success';
+  if (status === '接続失敗') return 'status-error';
+  return 'status-unknown';
+});
+
+// 接続テスト関数
+const testConnection = async () => {
+  testing.value = true;
+  connectionStatus.value = '確認中...';
+  
+  try {
+    const testUrl = baseUrl.value || config.api.baseUrl;
+    const response = await fetch(`${testUrl}/health`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (response.ok) {
+      connectionStatus.value = '接続成功';
+    } else {
+      connectionStatus.value = '接続失敗';
+    }
+  } catch (error) {
+    connectionStatus.value = '接続失敗';
+  } finally {
+    testing.value = false;
+  }
+};
 
 // Initialize API client with reactive values
 const updateApiClient = () => {
@@ -255,6 +402,184 @@ const testGetResults = async () => {
   border-radius: 4px;
   width: 300px;
   font-size: 14px;
+}
+
+.server-config small {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #666;
+  font-weight: normal;
+}
+
+/* デバッグ情報のスタイル */
+.config-status {
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  text-align: left;
+}
+
+.config-status h3 {
+  margin: 0 0 15px 0;
+  color: #495057;
+  font-size: 16px;
+}
+
+.status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 4px;
+  gap: 8px;
+}
+
+.status-item .label {
+  font-weight: 600;
+  color: #6c757d;
+  font-size: 14px;
+  flex-shrink: 0;
+}
+
+.status-item .value {
+  font-family: Monaco, 'Courier New', monospace;
+  font-size: 13px;
+  font-weight: 500;
+  padding: 2px 6px;
+  border-radius: 3px;
+  word-break: break-all;
+  flex: 1;
+}
+
+.test-btn {
+  padding: 4px 8px;
+  background: #17a2b8;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 12px;
+  flex-shrink: 0;
+  transition: background-color 0.2s;
+}
+
+.test-btn:hover {
+  background: #138496;
+}
+
+.test-btn:disabled {
+  background: #6c757d;
+  cursor: not-allowed;
+}
+
+/* 環境別の色分け */
+.env-development {
+  background: #d4edda;
+  color: #155724;
+}
+
+.env-production {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.env-custom {
+  background: #fff3cd;
+  color: #856404;
+}
+
+/* 設定ソース別の色分け */
+.source-env {
+  background: #cce5ff;
+  color: #004085;
+}
+
+.source-file {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+/* 接続先別の色分け */
+.target-local {
+  background: #d1ecf1;
+  color: #0c5460;
+}
+
+.target-production {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.target-other {
+  background: #fff3cd;
+  color: #856404;
+}
+
+/* 接続状態別の色分け */
+.status-success {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-error {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+.status-unknown {
+  background: #e2e3e5;
+  color: #383d41;
+}
+
+/* 環境変数セクション */
+.env-vars {
+  border-top: 1px solid #dee2e6;
+  padding-top: 15px;
+}
+
+.env-vars h4 {
+  margin: 0 0 10px 0;
+  color: #495057;
+  font-size: 14px;
+}
+
+.env-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.env-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.env-key {
+  font-weight: 600;
+  color: #6c757d;
+}
+
+.env-value {
+  font-family: Monaco, 'Courier New', monospace;
+  color: #495057;
+  max-width: 60%;
+  word-break: break-all;
 }
 
 .api-sections {
