@@ -85,7 +85,7 @@ async function handleFetchError(status: number) {
     console.log(`Retrying to fetch rooms (attempt ${retryCount.value}/${maxRetries})`);
     setTimeout(() => {
       fetchRooms();
-    }, 1000 * retryCount.value); // 指数バックオフ的に待機時間を増加
+    }, 1000 * retryCount.value); // 線形バックオフ的に待機時間を増加
   } else {
     console.error("Max retries reached, giving up");
     alert("部屋一覧の取得に失敗しました。ユーザー選択画面に戻ります。");
