@@ -3,21 +3,14 @@
     <img :class="$style.logo" src="/logo.svg" alt="Logo" />
     <div :class="$style.header">部屋を選んで入室</div>
     
-    <div v-if="isLoading" :class="$style.loading">
+    <div v-if="isLoading || (roomData.length === 0 && retryCount < maxRetries)" :class="$style.loading">
       部屋一覧を読み込み中...
-    </div>
-    
-    <div v-else-if="roomData.length === 0 && retryCount < maxRetries" :class="$style.empty">
-      <p>部屋が見つかりません</p>
-      <button :class="$style.retryButton" @click="fetchRooms" :disabled="isLoading">
-        再試行 ({{ retryCount }}/{{ maxRetries }})
-      </button>
     </div>
     
     <div v-else-if="roomData.length === 0" :class="$style.empty">
       <p>部屋の取得に失敗しました</p>
       <button :class="$style.retryButton" @click="() => { retryCount = 0; fetchRooms(); }" :disabled="isLoading">
-        最初からやり直す
+        再読み込み
       </button>
       <button :class="$style.backButton" @click="() => router.push('/')">
         ユーザー選択に戻る
@@ -79,17 +72,16 @@ async function handleFetchError(status: number) {
     return;
   }
 
-  // その他のエラーでリトライ可能な場合は再試行
+  // その他のエラーでリトライ可能な場合は自動で再試行
   if (retryCount.value < maxRetries) {
     retryCount.value++;
-    console.log(`Retrying to fetch rooms (attempt ${retryCount.value}/${maxRetries})`);
+    console.log(`Auto-retrying to fetch rooms (attempt ${retryCount.value}/${maxRetries})`);
     setTimeout(() => {
       fetchRooms();
     }, 1000 * retryCount.value); // 線形バックオフ的に待機時間を増加
   } else {
-    console.error("Max retries reached, giving up");
-    alert("部屋一覧の取得に失敗しました。ユーザー選択画面に戻ります。");
-    router.push("/");
+    // 最大再試行数に達した場合エラー状態を表示
+    console.error("Max retries reached, showing error options");
   }
 }
 
