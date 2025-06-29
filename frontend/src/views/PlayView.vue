@@ -351,6 +351,8 @@ onMounted(() => {
   if (webSocketStore.wsManager) {
     webSocketStore.wsManager.addMessageHandler(handleWebSocketEvent);
     console.log("Added PlayView WebSocket event handler");
+  } else {
+    console.warn("WebSocket manager not available, falling back to ensureWebSocketConnection");
   }
 
   // グローバルWebSocketストアに現在のコンポーネントのイベントハンドラーを設定
