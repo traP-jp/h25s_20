@@ -190,25 +190,35 @@ const onClickStart = async () => {
 }
 
 .mainBtn {
-  transform: scale(1.5);
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 8px;
   margin: 20px 0;
+  transform: scale(1.5);
+  min-width: 150px;
+  box-sizing: border-box;
+  text-align: center;
 }
 
 .startBtn {
-  border: 1px solid red;
-  /* background-color: #4caf50; */
+  background-color: #4caf50;
   color: white;
   border: none;
-  padding: 15px 30px;
-  font-size: 18px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
   border-radius: 8px;
   cursor: pointer;
-  margin: 10px 0;
-  transform: scale(1.2);
+  margin: 20px 0;
+  transform: scale(1.5);
+  min-width: 150px;
+  box-sizing: border-box;
+  text-align: center;
 }
 
-.startBtn:hover {
-  opacity: 0.8;
+button.startBtn:hover {
+  background-color: #45a049;
 }
 
 .quitBtn {
