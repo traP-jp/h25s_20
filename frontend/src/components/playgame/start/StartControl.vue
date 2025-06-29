@@ -9,7 +9,13 @@
       {{ BtnMsg }}
     </button>
     <!-- リーダーかつ全プレイヤーが準備完了の場合にゲーム開始ボタンを表示 -->
-    <button v-show="isLeader && allPlayersReady" :class="$style.startBtn" @click="onClickStart">ゲーム開始</button>
+    <button
+      v-show="isLeader && allPlayersReady"
+      :class="[$style.mainBtn, $style.startBtn]"
+      @click="onClickStart"
+    >
+      ゲーム開始
+    </button>
     <button v-show="!isBtnDisabled" :class="$style.quitBtn" @click="onClickQuit">部屋から抜ける</button>
     <button v-show="isBtnDisabled" :class="$style.cancelBtn" @click="onClickCancel">キャンセル</button>
   </div>
@@ -191,30 +197,21 @@ const onClickStart = async () => {
 
 .mainBtn {
   padding: 12px 24px;
+  color: white;
   font-size: 16px;
   font-weight: bold;
+  border: none;
   border-radius: 8px;
   margin: 20px 0;
   transform: scale(1.5);
   min-width: 150px;
   box-sizing: border-box;
   text-align: center;
+  cursor: pointer;
 }
 
 .startBtn {
   background-color: #4caf50;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  font-size: 16px;
-  font-weight: bold;
-  border-radius: 8px;
-  cursor: pointer;
-  margin: 20px 0;
-  transform: scale(1.5);
-  min-width: 150px;
-  box-sizing: border-box;
-  text-align: center;
 }
 
 button.startBtn:hover {
