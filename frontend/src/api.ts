@@ -27,7 +27,7 @@ export class ApiClient {
   private baseUrl: string;
   private authToken: string;
 
-  constructor(baseUrl: string = "https://10ten.trap.show/api", authToken: string = "") {
+  constructor(baseUrl: string = "https://10ten.trap.show/api", authToken?: string) {
     this.baseUrl = baseUrl;
     this.authToken = authToken;
     
