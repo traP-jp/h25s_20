@@ -2,7 +2,29 @@
   <div :class="$style.container">
     <img :class="$style.logo" src="/logo.svg" alt="Logo" />
     <div :class="$style.header">部屋を選んで入室</div>
-    <div :class="$style.rooms">
+    
+    <div v-if="isLoading" :class="$style.loading">
+      部屋一覧を読み込み中...
+    </div>
+    
+    <div v-else-if="roomData.length === 0 && retryCount < maxRetries" :class="$style.empty">
+      <p>部屋が見つかりません</p>
+      <button :class="$style.retryButton" @click="fetchRooms" :disabled="isLoading">
+        再試行 ({{ retryCount }}/{{ maxRetries }})
+      </button>
+    </div>
+    
+    <div v-else-if="roomData.length === 0" :class="$style.empty">
+      <p>部屋の取得に失敗しました</p>
+      <button :class="$style.retryButton" @click="() => { retryCount = 0; fetchRooms(); }" :disabled="isLoading">
+        最初からやり直す
+      </button>
+      <button :class="$style.backButton" @click="() => router.push('/')">
+        ユーザー選択に戻る
+      </button>
+    </div>
+    
+    <div v-else :class="$style.rooms">
       <RoomButton v-for="room in roomData" :key="room.roomId" :room="room" @click="handleRoomClick(room)" />
     </div>
 
@@ -21,20 +43,66 @@ import { useCurrentRoomStore } from "@/store";
 const roomData = ref<Room[]>([]);
 const router = useRouter();
 const currentRoomStore = useCurrentRoomStore();
+const isLoading = ref(false);
+const retryCount = ref(0);
+const maxRetries = 3;
 
 async function fetchRooms() {
+  if (isLoading.value) return;
+  
+  isLoading.value = true;
   try {
     const response = await apiClient.getRooms();
     if (response.success) {
       // ルームIDの昇順でソート
       roomData.value = response.data.sort((a: Room, b: Room) => a.roomId - b.roomId);
-      console.log(response.data);
+      console.log("Successfully fetched rooms:", response.data);
+      retryCount.value = 0; // 成功したらリトライカウントをリセット
     } else {
       console.error("Failed to fetch rooms:", response.data);
+      await handleFetchError(response.status);
     }
   } catch (error) {
     console.error("Error fetching rooms:", error);
+    await handleFetchError(0);
+  } finally {
+    isLoading.value = false;
   }
+}
+
+async function handleFetchError(status: number) {
+  // 認証エラー（401）またはユーザーが見つからない（404）の場合はユーザー選択画面に戻る
+  if (status === 401 || status === 404) {
+    console.warn("Authentication failed, redirecting to signup");
+    alert("認証に失敗しました。ユーザー選択画面に戻ります。");
+    router.push("/");
+    return;
+  }
+
+  // その他のエラーでリトライ可能な場合は再試行
+  if (retryCount.value < maxRetries) {
+    retryCount.value++;
+    console.log(`Retrying to fetch rooms (attempt ${retryCount.value}/${maxRetries})`);
+    setTimeout(() => {
+      fetchRooms();
+    }, 1000 * retryCount.value); // 指数バックオフ的に待機時間を増加
+  } else {
+    console.error("Max retries reached, giving up");
+    alert("部屋一覧の取得に失敗しました。ユーザー選択画面に戻ります。");
+    router.push("/");
+  }
+}
+
+function checkAuthToken() {
+  // APIクライアントが認証トークンを持っているかチェック
+  const hasToken = sessionStorage.getItem("authToken");
+  if (!hasToken) {
+    console.warn("No auth token found, redirecting to signup");
+    alert("認証情報が見つかりません。ユーザー選択画面に戻ります。");
+    router.push("/");
+    return false;
+  }
+  return true;
 }
 
 async function handleRoomClick(room: Room) {
@@ -88,7 +156,10 @@ async function handleRoomClick(room: Room) {
 }
 
 onMounted(() => {
-  fetchRooms();
+  // 認証トークンをチェックしてから部屋一覧を取得
+  if (checkAuthToken()) {
+    fetchRooms();
+  }
 });
 
 const onClick = () => {
@@ -152,5 +223,52 @@ const onClick = () => {
   color: #666;
   margin: 20px;
   font-size: 16px;
+}
+
+.loading {
+  text-align: center;
+  color: #666;
+  margin: 20px;
+  font-size: 16px;
+  font-style: italic;
+}
+
+.retryButton {
+  padding: 8px 16px;
+  margin-top: 10px;
+  margin-right: 8px;
+  font-size: 14px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.retryButton:hover:not(:disabled) {
+  background-color: #0056b3;
+}
+
+.retryButton:disabled {
+  background-color: #6c757d;
+  cursor: not-allowed;
+}
+
+.backButton {
+  padding: 8px 16px;
+  margin-top: 10px;
+  margin-left: 8px;
+  font-size: 14px;
+  background-color: #6c757d;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.backButton:hover {
+  background-color: #545b62;
 }
 </style>
