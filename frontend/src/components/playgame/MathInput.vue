@@ -171,20 +171,8 @@ const addSymbol = (value: string) => {
       ? expression.value[expression.value.length - 1]
       : "+";
 
-  // 数字を追加しようとする場合のチェック
-  if (/[1-9]/.test(value)) {
-    // 既に4つの数字が使われている場合は数字の追加を拒否
-    if (numberCount >= 4) {
-      return;
-    }
-  }
-
-  // 演算子を追加しようとする場合のチェック
-  if (/[+\-*/]/.test(value)) {
-    // 4つの数字が使われている場合は新しい演算子の追加を拒否
-    if (numberCount >= 4) {
-      return;
-    }
+  if (numberCount >= 4) {
+    return;
   }
 
   if (/[1-9]/.test(last)) {
