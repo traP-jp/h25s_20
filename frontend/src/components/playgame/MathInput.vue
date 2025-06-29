@@ -155,10 +155,8 @@ watch(expression, async (newValue) => {
     }
   }
   // 提出に該当しない場合は何もしない（expressionの値はそのまま）
-});
-
-// ハイライト機能用 数式の変更をリアルタイムで親コンポーネントに通知
-watch(expression, (newValue) => {
+  
+  // ハイライト機能用 数式の変更をリアルタイムで親コンポーネントに通知
   currentExpression.value = newValue;
 });
 
