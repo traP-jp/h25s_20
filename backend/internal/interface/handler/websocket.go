@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/coder/websocket"
@@ -45,6 +46,15 @@ func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
 
 	userID := int(user.ID)
 
+	// ルームIDをクエリパラメータから取得
+	roomIDStr := c.QueryParam("room_id")
+	var initialRoomID *int
+	if roomIDStr != "" {
+		if id, err := strconv.Atoi(roomIDStr); err == nil {
+			initialRoomID = &id
+		}
+	}
+
 	// WebSocket接続をアップグレード（CORS対応のオプション追加）
 	conn, err := websocket.Accept(c.Response().Writer, c.Request(), &websocket.AcceptOptions{
 		Subprotocols:   []string{"echo"},
@@ -63,7 +73,7 @@ func (h *WebSocketHandler) HandleWebSocket(c echo.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// クライアントをマネージャーに登録
-	h.manager.AddClient(clientID, userID, conn, cancel)
+	h.manager.AddClient(clientID, userID, initialRoomID, conn, cancel)
 
 	// 接続完了メッセージを送信
 	if err := h.SendConnectionEvent(userID, clientID, "Connected successfully", time.Now().Unix()); err != nil {
