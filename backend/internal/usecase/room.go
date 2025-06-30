@@ -240,15 +240,14 @@ func (r *RoomUsecase) RemovePlayerFromRoom(roomID int, playerID int) (*domain.Ro
 
 	// 参加者が0人になった場合、ルームをリセット
 	if len(room.Players) == 0 {
-		err := room.ResetRoom()
-		if err != nil {
-			// StateGameEndedでない場合は強制的にWaitingForPlayersに戻す
-			room.State = domain.StateWaitingForPlayers
-		}
-		// ゲームボードもリセット
+		// 状態に関わらず、ルームを完全に初期状態に戻す
+		room.State = domain.StateWaitingForPlayers
 		room.GameBoards = []domain.GameBoard{domain.NewBoard()}
 		room.ResultLog = []domain.Result{}
-		room.IsOpened = true // ルームを再度開放
+		room.IsOpened = true
+		room.LastCorrectPlayerID = 0
+		room.StreakCount = 0
+		// プレイヤーリストは既に空なので、個々のリセットは不要
 	} else {
 		// まだプレイヤーがいる場合、READY状態をチェック
 		if !room.AreAllPlayersReady() && room.State == domain.StateAllReady {

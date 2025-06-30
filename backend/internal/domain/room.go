@@ -326,10 +326,11 @@ func (r *Room) AreAllPlayersReady() bool {
 // AreAllPlayersClosedResult checks if all players have closed the result display
 func (r *Room) AreAllPlayersClosedResult() bool {
 	if len(r.Players) == 0 {
-		return false
+		return true
 	}
 	for _, player := range r.Players {
-		if !player.HasClosedResult {
+		// 切断したプレイヤーは結果を閉じる操作ができないので除外
+		if player.IsConnected && !player.HasClosedResult {
 			return false
 		}
 	}
@@ -378,7 +379,18 @@ func (r *Room) ResetRoom() error {
 	if r.State != StateGameEnded {
 		return fmt.Errorf("game has not ended yet")
 	}
-	// Reset player ready status and result closed status
+
+	// 接続中のプレイヤーのみを保持する新しいスライスを作成
+	connectedPlayers := make([]Player, 0, len(r.Players))
+	for _, p := range r.Players {
+		if p.IsConnected {
+			connectedPlayers = append(connectedPlayers, p)
+		}
+	}
+	// プレイヤーリストを更新して、切断したプレイヤーを削除
+	r.Players = connectedPlayers
+
+	// Reset player ready status and result closed status for remaining players
 	for i := range r.Players {
 		r.Players[i].IsReady = false
 		r.Players[i].HasClosedResult = false
