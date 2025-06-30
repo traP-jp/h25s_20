@@ -75,7 +75,7 @@ func NewManager() *Manager {
 		userClients:       make(map[int]*Client),
 		roomClients:       make(map[int][]*Client),
 		disconnectedUsers: make(map[int]*UserState),
-		deleteTimeout:     30 * time.Second, // デフォルト30秒後に削除
+		deleteTimeout:     10 * time.Second, // ゲーム時間と同じ120秒後に削除
 	}
 }
 
@@ -195,29 +195,10 @@ func (m *Manager) RemoveClient(clientID string) {
 		LastSeenAt: time.Now(),
 	}
 
-	// 削除タイマーを設定
+	// 削除タイマーを設定（デッドロック回避のため、別ゴルーチンで実行）
 	userState.DeleteTimer = time.AfterFunc(m.deleteTimeout, func() {
-		m.mutex.Lock()
-		defer m.mutex.Unlock()
-
-		// タイムアウト後にユーザー状態を完全削除
-		if state, exists := m.disconnectedUsers[client.UserID]; exists {
-			// RoomUsecaseに永続削除を通知
-			if m.roomUsecase != nil && state.RoomID != nil {
-				if _, err := m.roomUsecase.RemoveDisconnectedPlayer(*state.RoomID, client.UserID); err != nil {
-					log.Warn().Err(err).
-						Int("room_id", *state.RoomID).
-						Int("user_id", client.UserID).
-						Msg("Failed to notify room usecase about player removal")
-				}
-			}
-
-			delete(m.disconnectedUsers, client.UserID)
-			log.Info().
-				Int("user_id", client.UserID).
-				Dur("after_disconnect", time.Since(state.LastSeenAt)).
-				Msg("User permanently deleted after timeout")
-		}
+		// 非同期でユーザー削除処理を実行してデッドロックを回避
+		go m.handleUserDeletion(client.UserID)
 	})
 
 	m.disconnectedUsers[client.UserID] = userState
@@ -349,9 +330,14 @@ func (m *Manager) leaveRoomInternal(client *Client) {
 
 	roomID := *client.RoomID
 	if clients, exists := m.roomClients[roomID]; exists {
-		for i, c := range clients {
-			if c.ID == client.ID {
-				m.roomClients[roomID] = append(clients[:i], clients[i+1:]...)
+		for i := 0; i < len(clients); i++ {
+			if clients[i].ID == client.ID {
+				// 境界チェック付きでスライスから削除
+				if i < len(clients)-1 {
+					m.roomClients[roomID] = append(clients[:i], clients[i+1:]...)
+				} else {
+					m.roomClients[roomID] = clients[:i]
+				}
 				break
 			}
 		}
@@ -758,4 +744,29 @@ func (m *Manager) GetDisconnectedUserStats() map[string]interface{} {
 	stats["users"] = users
 
 	return stats
+}
+
+// handleUserDeletion デッドロック回避のための非同期ユーザー削除処理
+func (m *Manager) handleUserDeletion(userID int) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// タイムアウト後にユーザー状態を完全削除
+	if state, exists := m.disconnectedUsers[userID]; exists {
+		// RoomUsecaseに永続削除を通知
+		if m.roomUsecase != nil && state.RoomID != nil {
+			if _, err := m.roomUsecase.RemoveDisconnectedPlayer(*state.RoomID, userID); err != nil {
+				log.Warn().Err(err).
+					Int("room_id", *state.RoomID).
+					Int("user_id", userID).
+					Msg("Failed to notify room usecase about player removal")
+			}
+		}
+
+		delete(m.disconnectedUsers, userID)
+		log.Info().
+			Int("user_id", userID).
+			Dur("after_disconnect", time.Since(state.LastSeenAt)).
+			Msg("User permanently deleted after timeout")
+	}
 }
