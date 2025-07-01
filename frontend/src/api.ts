@@ -1,4 +1,5 @@
 import axios, { type AxiosResponse, type AxiosError } from "axios";
+import { getConfig } from "@/config/app";
 
 // API response type
 export interface ApiResponse<T = any> {
@@ -27,8 +28,9 @@ export class ApiClient {
   private baseUrl: string;
   private authToken: string;
 
-  constructor(baseUrl: string = "https://10ten.trap.show/api", authToken?: string) {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl?: string, authToken: string = "") {
+    const config = getConfig();
+    this.baseUrl = baseUrl || config.api.baseUrl;
     this.authToken = authToken;
     
     // 初期化時にsessionStorageからトークンを自動復元

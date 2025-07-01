@@ -2,6 +2,7 @@ import { defineStore } from "pinia";
 import { ref } from "vue";
 import { useWebSocket, type WebSocketEvent } from "@/lib/websocket";
 import { type ResultPlayer, type StartPlayer, type Room } from "@/lib/types";
+import { getWsUrl } from "@/config/app";
 
 export const useNotificationStore = defineStore("notificationStore", () => {
   const notifications = ref<string[]>([]);
@@ -148,11 +149,7 @@ export const useWebSocketStore = defineStore("webSocketStore", () => {
     }
 
     currentUsername.value = username;
-    // localStorageとsessionStorageの両方にユーザー名を保存
-    localStorage.setItem("username", username);
-    sessionStorage.setItem("username", username);
-    
-    const wsUrl = `wss://10ten.trap.show/api/ws?username=${encodeURIComponent(username)}`;
+    const wsUrl = getWsUrl(`username=${encodeURIComponent(username)}`);
 
     wsManager.value = useWebSocket(wsUrl, (event: WebSocketEvent) => {
       console.log("Global WebSocket received:", event);
