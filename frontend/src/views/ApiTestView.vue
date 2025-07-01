@@ -40,7 +40,7 @@
           <div class="env-list">
             <div v-for="(value, key) in envVars" :key="key" class="env-item">
               <span class="env-key">{{ key }}:</span>
-              <span class="env-value">{{ value || '(未設定)' }}</span>
+              <span class="env-value">{{ value ?? '(未設定)' }}</span>
             </div>
           </div>
         </div>
