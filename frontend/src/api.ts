@@ -1,4 +1,5 @@
 import axios, { type AxiosResponse, type AxiosError } from "axios";
+import { getConfig } from "@/config/app";
 
 // API response type
 export interface ApiResponse<T = any> {
@@ -27,9 +28,21 @@ export class ApiClient {
   private baseUrl: string;
   private authToken: string;
 
-  constructor(baseUrl: string = "https://10ten.trap.show/api", authToken: string = "") {
-    this.baseUrl = baseUrl;
+  constructor(baseUrl?: string, authToken: string = "") {
+    const config = getConfig();
+    this.baseUrl = baseUrl || config.api.baseUrl;
     this.authToken = authToken;
+    
+    // 初期化時にsessionStorageからトークンを自動復元
+    if (!authToken) {
+      const storedToken = sessionStorage.getItem("authToken");
+      if (storedToken) {
+        this.authToken = storedToken;
+        console.log("Auth token restored from sessionStorage on initialization");
+      } else {
+        console.log("No auth token found in sessionStorage on initialization");
+      }
+    }
   }
 
   setBaseUrl(url: string) {
@@ -38,6 +51,8 @@ export class ApiClient {
 
   setAuthToken(token: string) {
     this.authToken = token;
+    // sessionStorageにも保存してリロード後の復元を可能にする
+    sessionStorage.setItem("authToken", token);
   }
 
   private async makeRequest<T = any>(

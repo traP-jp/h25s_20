@@ -1,5 +1,16 @@
 <script setup lang="ts">
 import { RouterView } from "vue-router";
+import { onMounted } from "vue";
+import { useWebSocketStore } from "@/store";
+
+// WebSocketストアを取得
+const webSocketStore = useWebSocketStore();
+
+// アプリケーション起動時にWebSocket接続を自動復元
+onMounted(() => {
+  console.log("App mounted - attempting to restore WebSocket connection");
+  webSocketStore.autoRestoreConnection();
+});
 </script>
 
 <template>

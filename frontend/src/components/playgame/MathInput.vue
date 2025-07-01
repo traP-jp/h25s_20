@@ -25,7 +25,10 @@
       </div>
       <div :class="$style.tens">
         <div :class="$style.symbolRow">
-          <MathInputButton icon="mdi:code-parentheses" @click="addParentheses" />
+          <MathInputButton
+            icon="mdi:code-parentheses"
+            @click="addParentheses"
+          />
           <MathInputButton
             icon="mdi:backspace-outline"
             @click="backspace"
@@ -59,6 +62,12 @@ const expression = defineModel<string>("expression", {
 });
 const board = defineModel<number[]>("board");
 const version = defineModel<number>("version");
+
+// ハイライト機能用のModel
+const currentExpression = defineModel<string>("currentExpression", {
+  default: "",
+  type: String,
+});
 
 // 親コンポーネントからroomを注入
 import type { Room } from "@/lib/types";
@@ -133,7 +142,10 @@ watch(expression, async (newValue) => {
         formula: encodePoland(newValue),
       };
 
-      const response = await apiClient.submitFormula(currentRoom.value.roomId, submission);
+      const response = await apiClient.submitFormula(
+        currentRoom.value.roomId,
+        submission
+      );
 
       if (response.success) {
         console.log("数式が正常に提出されました:", response.data);
@@ -148,25 +160,36 @@ watch(expression, async (newValue) => {
       // エラー時も入力をそのまま残す
     }
   }
+  
+  // ハイライト機能用 数式の変更をリアルタイムで親コンポーネントに通知
+  currentExpression.value = newValue;
+
   // 提出に該当しない場合は何もしない（expressionの値はそのまま）
 });
 
 const viewExpression = computed(() => {
-  return expression.value.replace(/-/g, "−").replace(/\*/g, "×").replace(/\//g, "÷");
+  return expression.value
+    .replace(/-/g, "−")
+    .replace(/\*/g, "×")
+    .replace(/\//g, "÷");
 });
 
 const addSymbol = (value: string) => {
-  const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
+  const numberCount = (expression.value.match(/[1-9]/g) || []).length;
+  const last =
+    expression.value.length > 0
+      ? expression.value[expression.value.length - 1]
+      : "+";
+
+  if (numberCount >= 4) {
+    return;
+  }
 
   if (/[1-9]/.test(last)) {
     if (/[1-9]/.test(value)) {
       expression.value = expression.value.slice(0, -1) + value;
       return;
     } else if (/[+\-*/]/.test(value)) {
-      const numberCount = (expression.value.match(/[1-9]/g) || []).length;
-      if (numberCount >= 4) {
-        return;
-      }
       expression.value += value;
       return;
     }
@@ -204,7 +227,10 @@ const addParentheses = () => {
   console.log("openParens: ", openParens);
   console.log("closeParens: ", closeParens);
 
-  const last = expression.value.length > 0 ? expression.value[expression.value.length - 1] : "+";
+  const last =
+    expression.value.length > 0
+      ? expression.value[expression.value.length - 1]
+      : "+";
   if (/[1-9]/.test(last) || last === ")") {
     if (openParens > closeParens) {
       expression.value += ")";

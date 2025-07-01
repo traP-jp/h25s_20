@@ -148,9 +148,10 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		}
 
 		// カウントダウンと最初のボード生成を別のgoroutineで実行
-		// StartGame()が成功した時点でStateがCountdownに変わっているため、
-		// 重複実行は防止されている
-		go h.handleGameStart(roomId)
+		// ゲームタイマーの重複実行を防止
+		if h.roomUsecase.CanStartGameTimer(roomId) {
+			go h.handleGameStart(roomId)
+		}
 		return c.NoContent(http.StatusNoContent)
 
 	case models.ABORT:
@@ -232,48 +233,29 @@ func (h *Handler) PostRoomsRoomIdFormulas(c echo.Context, roomId int) error {
 		UserName: user.Username,
 	}
 
-	room, err := h.roomUsecase.GetRoomByID(roomId)
-	if err != nil {
-		return c.JSON(http.StatusNotFound, map[string]string{
-			"error": "Room not found",
-		})
-	}
-
-	// プレイヤーがルームに参加しているかチェック
-	playerInRoom := false
-	for _, roomPlayer := range room.Players {
-		if roomPlayer.ID == player.ID {
-			playerInRoom = true
-			break
-		}
-	}
-
-	if !playerInRoom {
-		return c.JSON(http.StatusForbidden, map[string]string{
-			"error": "Player is not in this room",
-		})
-	}
-
-	// ゲームが進行中かチェック
-	if room.State != domain.StateGameInProgress {
-		return c.JSON(http.StatusConflict, map[string]string{
-			"error": "Game is not in progress",
-		})
-	}
-
-	// 現在のゲームボードを取得
-	if len(room.GameBoards) == 0 {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "No game board available",
-		})
-	}
-
-	// バージョン付きの細かい衝突検出を使用
+	// すべてのチェックをApplyFormulaWithVersion内で原子的に実行
+	// ここでの事前チェックは削除してTOC-TOU問題を回避
 	board, gainScore, err := h.roomUsecase.ApplyFormulaWithVersion(roomId, player.ID, req.Formula, req.Version)
 	if err != nil {
-		// 衝突エラーの場合は409を返す
+		// バージョン衝突エラーの場合は409を返す
 		if strings.Contains(err.Error(), "他のプレイヤーによって更新されています") ||
 			strings.Contains(err.Error(), "無効なバージョンです") {
+			return c.JSON(http.StatusConflict, map[string]string{
+				"error": err.Error(),
+			})
+		}
+		// ルーム・プレイヤー・状態エラーの場合
+		if strings.Contains(err.Error(), "room with ID") && strings.Contains(err.Error(), "not found") {
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": err.Error(),
+			})
+		}
+		if strings.Contains(err.Error(), "not in this room") {
+			return c.JSON(http.StatusForbidden, map[string]string{
+				"error": err.Error(),
+			})
+		}
+		if strings.Contains(err.Error(), "game is not in progress") {
 			return c.JSON(http.StatusConflict, map[string]string{
 				"error": err.Error(),
 			})
@@ -413,6 +395,8 @@ func (h *Handler) handleGameStart(roomID int) {
 
 // handleGameTimer は120秒のゲームタイマーとラスト10秒のカウントダウンを処理する
 func (h *Handler) handleGameTimer(roomID int) {
+	defer h.roomUsecase.StopGameTimer(roomID) // タイマー終了時にフラグをクリア
+
 	// 110秒待機（120秒 - 10秒のカウントダウン）
 	time.Sleep(110 * time.Second)
 
