@@ -2,10 +2,55 @@
   <div class="api-test">
     <div class="header">
       <h1>API Test Console</h1>
+      
+      <!-- 現在の設定情報表示 -->
+      <div class="config-status">
+        <h3>🔧 現在の設定状況</h3>
+        <div class="status-grid">
+          <div class="status-item">
+            <span class="label">環境:</span>
+            <span class="value" :class="environmentClass">{{ currentEnvironment }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">API URL:</span>
+            <span class="value">{{ config.api.baseUrl }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">WebSocket URL:</span>
+            <span class="value">{{ config.api.wsBaseUrl }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">設定ソース:</span>
+            <span class="value" :class="configSourceClass">{{ configSource }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">実際の接続先:</span>
+            <span class="value" :class="connectionTargetClass">{{ baseUrl || config.api.baseUrl }}</span>
+          </div>
+          <div class="status-item">
+            <span class="label">接続状態:</span>
+            <span class="value" :class="connectionStatusClass">{{ connectionStatus }}</span>
+            <button @click="testConnection" :disabled="testing" class="test-btn">
+              {{ testing ? '確認中...' : '接続確認' }}
+            </button>
+          </div>
+        </div>
+        <div class="env-vars">
+          <h4>📋 環境変数</h4>
+          <div class="env-list">
+            <div v-for="(value, key) in envVars" :key="key" class="env-item">
+              <span class="env-key">{{ key }}:</span>
+              <span class="env-value">{{ value ?? '(未設定)' }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="server-config">
         <label>
           Base URL:
-          <input v-model="baseUrl" type="text" placeholder="https://10ten.trap.show/api" />
+          <input v-model="baseUrl" type="text" :placeholder="config.api.baseUrl" />
+          <small>空の場合は上記の設定を使用</small>
         </label>
         <label>
           JWT Token:
@@ -18,7 +63,7 @@
       <!-- Health Check -->
       <div class="api-section">
         <h2>Health Check</h2>
-        <button @click="testHealth" :disabled="loading">GET /health</button>
+        <button @click="testHealth" :disabled="isLoading">GET /health</button>
         <div v-if="responses.health" class="response" :class="responses.health.success ? 'success' : 'error'">
           <pre>{{ responses.health.data }}</pre>
         </div>
@@ -30,7 +75,7 @@
         <div class="form-group">
           <input v-model="userData.username" type="text" placeholder="Username" />
           <input v-model="userData.password" type="password" placeholder="Password" />
-          <button @click="testCreateUser" :disabled="loading">POST /users</button>
+          <button @click="testCreateUser" :disabled="isLoading">POST /users</button>
         </div>
         <div v-if="responses.users" class="response" :class="responses.users.success ? 'success' : 'error'">
           <pre>{{ responses.users.data }}</pre>
@@ -40,7 +85,7 @@
       <!-- Rooms -->
       <div class="api-section">
         <h2>Rooms</h2>
-        <button @click="testGetRooms" :disabled="loading">GET /rooms</button>
+        <button @click="testGetRooms" :disabled="isLoading">GET /rooms</button>
         <div v-if="responses.rooms" class="response" :class="responses.rooms.success ? 'success' : 'error'">
           <pre>{{ responses.rooms.data }}</pre>
         </div>
@@ -60,7 +105,7 @@
             <option value="ABORT">ABORT</option>
             <option value="CLOSE_RESULT">CLOSE_RESULT</option>
           </select>
-          <button @click="testRoomAction" :disabled="loading">POST /rooms/:id/actions</button>
+          <button @click="testRoomAction" :disabled="isLoading">POST /rooms/:id/actions</button>
         </div>
         <div
           v-if="responses.roomActions"
@@ -78,7 +123,7 @@
           <input v-model="formula.roomId" type="number" placeholder="Room ID" />
           <input v-model="formula.version" type="number" placeholder="Version" />
           <input v-model="formula.formula" type="text" placeholder="Formula (e.g., 1+2*3-4)" />
-          <button @click="testSubmitFormula" :disabled="loading">POST /rooms/:id/formulas</button>
+          <button @click="testSubmitFormula" :disabled="isLoading">POST /rooms/:id/formulas</button>
         </div>
         <div v-if="responses.formulas" class="response" :class="responses.formulas.success ? 'success' : 'error'">
           <pre>{{ responses.formulas.data }}</pre>
@@ -90,7 +135,7 @@
         <h2>Room Results</h2>
         <div class="form-group">
           <input v-model="resultRoomId" type="number" placeholder="Room ID" />
-          <button @click="testGetResults" :disabled="loading">GET /rooms/:id/result</button>
+          <button @click="testGetResults" :disabled="isLoading">GET /rooms/:id/result</button>
         </div>
         <div v-if="responses.results" class="response" :class="responses.results.success ? 'success' : 'error'">
           <pre>{{ responses.results.data }}</pre>
@@ -99,17 +144,120 @@
     </div>
 
     <!-- Loading indicator -->
-    <div v-if="loading" class="loading">Testing API...</div>
+    <div v-if="isLoading" class="loading">Testing API...</div>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref, reactive } from "vue";
+import { ref, reactive, computed } from "vue";
 import { apiClient, type ApiResponse } from "@/api";
+import { getConfig } from "@/config/app";
+import "@/assets/debug-panel.css";
 
-const loading = ref(false);
-const baseUrl = ref("https://10ten.trap.show/api");
+const isLoading = ref(false);
+const testing = ref(false);
+const connectionStatus = ref('未確認');
+const config = getConfig();
+const baseUrl = ref("");
 const authToken = ref("");
+
+// デバッグ情報の計算プロパティ
+const currentEnvironment = computed(() => {
+  // 環境変数で明示的に設定されているかチェック
+  const hasCustomUrl = import.meta.env.VITE_API_BASE_URL;
+  const isProd = import.meta.env.PROD;
+  
+  if (hasCustomUrl) {
+    // 環境変数で設定されている場合、URLの内容で判定
+    const customUrl = import.meta.env.VITE_API_BASE_URL;
+    if (customUrl.includes('localhost') || customUrl.includes('127.0.0.1')) {
+      return '開発環境 (env設定)';
+    } else if (customUrl.includes('10ten.trap.show')) {
+      return '本番環境 (env設定)';
+    } else {
+      return 'カスタム環境';
+    }
+  }
+  
+  return isProd ? '本番環境' : '開発環境';
+});
+
+const environmentClass = computed(() => {
+  const env = currentEnvironment.value;
+  if (env.includes('本番')) return 'env-production';
+  if (env.includes('カスタム')) return 'env-custom';
+  return 'env-development';
+});
+
+const configSource = computed(() => {
+  if (import.meta.env.VITE_API_BASE_URL) {
+    return '環境変数 (.env)';
+  }
+  if (import.meta.env.PROD) {
+    return '自動設定 (本番)';
+  }
+  return '自動設定 (開発)';
+});
+
+const configSourceClass = computed(() => {
+  const source = configSource.value;
+  if (source.includes('環境変数')) return 'source-env';
+  return 'source-file';
+});
+
+const connectionTargetClass = computed(() => {
+  const target = baseUrl.value || config.api.baseUrl;
+  if (target.includes('localhost') || target.includes('127.0.0.1')) {
+    return 'target-local';
+  }
+  if (target.includes('10ten.trap.show')) {
+    return 'target-production';
+  }
+  return 'target-other';
+});
+
+const envVars = computed(() => {
+  return {
+    'VITE_API_BASE_URL': import.meta.env.VITE_API_BASE_URL,
+    'VITE_WS_BASE_URL': import.meta.env.VITE_WS_BASE_URL,
+    'MODE': import.meta.env.MODE,
+    'PROD': import.meta.env.PROD,
+    'DEV': import.meta.env.DEV,
+  };
+});
+
+const connectionStatusClass = computed(() => {
+  const status = connectionStatus.value;
+  if (status === '接続成功') return 'status-success';
+  if (status === '接続失敗') return 'status-error';
+  return 'status-unknown';
+});
+
+// 接続テスト関数
+const testConnection = async () => {
+  testing.value = true;
+  connectionStatus.value = '確認中...';
+  
+  try {
+    const testUrl = baseUrl.value || config.api.baseUrl;
+    const response = await fetch(`${testUrl}/health`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    
+    if (response.ok) {
+      connectionStatus.value = '接続成功';
+    } else {
+      connectionStatus.value = '接続失敗';
+    }
+  } catch (error) {
+    connectionStatus.value = '接続失敗';
+  } finally {
+    testing.value = false;
+  }
+};
 
 // Initialize API client with reactive values
 const updateApiClient = () => {
@@ -145,10 +293,10 @@ const responses = reactive({
 });
 
 const testHealth = async () => {
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.health = await apiClient.checkHealth();
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testCreateUser = async () => {
@@ -156,7 +304,7 @@ const testCreateUser = async () => {
     alert("Please enter username and password");
     return;
   }
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.users = await apiClient.createUser({
     username: userData.username,
@@ -167,14 +315,14 @@ const testCreateUser = async () => {
   if (responses.users.success && responses.users.data?.token) {
     authToken.value = responses.users.data.token;
   }
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testGetRooms = async () => {
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.rooms = await apiClient.getRooms();
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testRoomAction = async () => {
@@ -182,10 +330,10 @@ const testRoomAction = async () => {
     alert("Please enter room ID and select an action");
     return;
   }
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.roomActions = await apiClient.performRoomAction(roomAction.roomId, { action: roomAction.action });
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testSubmitFormula = async () => {
@@ -193,13 +341,13 @@ const testSubmitFormula = async () => {
     alert("Please enter room ID and formula");
     return;
   }
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.formulas = await apiClient.submitFormula(formula.roomId, {
     version: formula.version,
     formula: formula.formula,
   });
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testGetResults = async () => {
@@ -207,10 +355,10 @@ const testGetResults = async () => {
     alert("Please enter room ID");
     return;
   }
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.results = await apiClient.getRoomResults(resultRoomId.value);
-  loading.value = false;
+  isLoading.value = false;
 };
 </script>
 
@@ -255,6 +403,13 @@ const testGetResults = async () => {
   border-radius: 4px;
   width: 300px;
   font-size: 14px;
+}
+
+.server-config small {
+  margin-top: 2px;
+  font-size: 12px;
+  color: #666;
+  font-weight: normal;
 }
 
 .api-sections {
