@@ -120,6 +120,27 @@ export const useWebSocketStore = defineStore("webSocketStore", () => {
   const isConnected = ref(false);
   const currentUsername = ref<string>("");
 
+  // 初期化時にlocalStorageからユーザー名を復元
+  const initializeFromStorage = () => {
+    const storedUsername = localStorage.getItem("username") || sessionStorage.getItem("username");
+    if (storedUsername && !currentUsername.value) {
+      currentUsername.value = storedUsername;
+      console.log("Restored username from storage:", storedUsername);
+      return true;
+    }
+    return false;
+  };
+
+  // WebSocket接続の自動復元
+  const autoRestoreConnection = () => {
+    if (initializeFromStorage() && !wsManager.value) {
+      console.log("Auto-restoring WebSocket connection for:", currentUsername.value);
+      initializeWebSocket(currentUsername.value);
+      return true;
+    }
+    return false;
+  };
+
   // WebSocket接続を初期化
   const initializeWebSocket = (username: string, onMessage?: (event: WebSocketEvent) => void) => {
     if (wsManager.value) {
@@ -179,6 +200,8 @@ export const useWebSocketStore = defineStore("webSocketStore", () => {
     wsManager,
     isConnected,
     currentUsername,
+    initializeFromStorage,
+    autoRestoreConnection,
     initializeWebSocket,
     disconnectWebSocket,
     sendMessage,
