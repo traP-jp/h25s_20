@@ -63,7 +63,7 @@
       <!-- Health Check -->
       <div class="api-section">
         <h2>Health Check</h2>
-        <button @click="testHealth" :disabled="loading">GET /health</button>
+        <button @click="testHealth" :disabled="isLoading">GET /health</button>
         <div v-if="responses.health" class="response" :class="responses.health.success ? 'success' : 'error'">
           <pre>{{ responses.health.data }}</pre>
         </div>
@@ -75,7 +75,7 @@
         <div class="form-group">
           <input v-model="userData.username" type="text" placeholder="Username" />
           <input v-model="userData.password" type="password" placeholder="Password" />
-          <button @click="testCreateUser" :disabled="loading">POST /users</button>
+          <button @click="testCreateUser" :disabled="isLoading">POST /users</button>
         </div>
         <div v-if="responses.users" class="response" :class="responses.users.success ? 'success' : 'error'">
           <pre>{{ responses.users.data }}</pre>
@@ -85,7 +85,7 @@
       <!-- Rooms -->
       <div class="api-section">
         <h2>Rooms</h2>
-        <button @click="testGetRooms" :disabled="loading">GET /rooms</button>
+        <button @click="testGetRooms" :disabled="isLoading">GET /rooms</button>
         <div v-if="responses.rooms" class="response" :class="responses.rooms.success ? 'success' : 'error'">
           <pre>{{ responses.rooms.data }}</pre>
         </div>
@@ -105,7 +105,7 @@
             <option value="ABORT">ABORT</option>
             <option value="CLOSE_RESULT">CLOSE_RESULT</option>
           </select>
-          <button @click="testRoomAction" :disabled="loading">POST /rooms/:id/actions</button>
+          <button @click="testRoomAction" :disabled="isLoading">POST /rooms/:id/actions</button>
         </div>
         <div
           v-if="responses.roomActions"
@@ -123,7 +123,7 @@
           <input v-model="formula.roomId" type="number" placeholder="Room ID" />
           <input v-model="formula.version" type="number" placeholder="Version" />
           <input v-model="formula.formula" type="text" placeholder="Formula (e.g., 1+2*3-4)" />
-          <button @click="testSubmitFormula" :disabled="loading">POST /rooms/:id/formulas</button>
+          <button @click="testSubmitFormula" :disabled="isLoading">POST /rooms/:id/formulas</button>
         </div>
         <div v-if="responses.formulas" class="response" :class="responses.formulas.success ? 'success' : 'error'">
           <pre>{{ responses.formulas.data }}</pre>
@@ -135,7 +135,7 @@
         <h2>Room Results</h2>
         <div class="form-group">
           <input v-model="resultRoomId" type="number" placeholder="Room ID" />
-          <button @click="testGetResults" :disabled="loading">GET /rooms/:id/result</button>
+          <button @click="testGetResults" :disabled="isLoading">GET /rooms/:id/result</button>
         </div>
         <div v-if="responses.results" class="response" :class="responses.results.success ? 'success' : 'error'">
           <pre>{{ responses.results.data }}</pre>
@@ -144,7 +144,7 @@
     </div>
 
     <!-- Loading indicator -->
-    <div v-if="loading" class="loading">Testing API...</div>
+    <div v-if="isLoading" class="loading">Testing API...</div>
   </div>
 </template>
 
@@ -153,7 +153,7 @@ import { ref, reactive, computed } from "vue";
 import { apiClient, type ApiResponse } from "@/api";
 import { getConfig } from "@/config/app";
 
-const loading = ref(false);
+const isLoading = ref(false);
 const testing = ref(false);
 const connectionStatus = ref('未確認');
 const config = getConfig();
@@ -292,10 +292,10 @@ const responses = reactive({
 });
 
 const testHealth = async () => {
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.health = await apiClient.checkHealth();
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testCreateUser = async () => {
@@ -303,7 +303,7 @@ const testCreateUser = async () => {
     alert("Please enter username and password");
     return;
   }
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.users = await apiClient.createUser({
     username: userData.username,
@@ -314,14 +314,14 @@ const testCreateUser = async () => {
   if (responses.users.success && responses.users.data?.token) {
     authToken.value = responses.users.data.token;
   }
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testGetRooms = async () => {
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.rooms = await apiClient.getRooms();
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testRoomAction = async () => {
@@ -329,10 +329,10 @@ const testRoomAction = async () => {
     alert("Please enter room ID and select an action");
     return;
   }
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.roomActions = await apiClient.performRoomAction(roomAction.roomId, { action: roomAction.action });
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testSubmitFormula = async () => {
@@ -340,13 +340,13 @@ const testSubmitFormula = async () => {
     alert("Please enter room ID and formula");
     return;
   }
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.formulas = await apiClient.submitFormula(formula.roomId, {
     version: formula.version,
     formula: formula.formula,
   });
-  loading.value = false;
+  isLoading.value = false;
 };
 
 const testGetResults = async () => {
@@ -354,10 +354,10 @@ const testGetResults = async () => {
     alert("Please enter room ID");
     return;
   }
-  loading.value = true;
+  isLoading.value = true;
   updateApiClient();
   responses.results = await apiClient.getRoomResults(resultRoomId.value);
-  loading.value = false;
+  isLoading.value = false;
 };
 </script>
 
