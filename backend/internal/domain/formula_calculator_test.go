@@ -22,13 +22,6 @@ func TestFormulaCalculator_EvaluateFormula(t *testing.T) {
 			expectedError:  false,
 			expectedType:   "10",
 		},
-		{
-			name:           "Complex expression to 10",
-			expression:     "19+2*+",
-			expectedResult: 10,
-			expectedError:  false,
-			expectedType:   "10",
-		},
 		// 正常系 - 10以外の整数
 		{
 			name:           "Not 10 but integer",
@@ -39,11 +32,11 @@ func TestFormulaCalculator_EvaluateFormula(t *testing.T) {
 		},
 		// 正常系 - 整数でない結果
 		{
-			name:           "Invalid input",
-			expression:     "34+5/",
-			expectedResult: 1.4, // (3+4)/5 = 7/5 = 1.4
+			name:           "Not an integer",
+			expression:     "34+5/7+", // ((3+4)/5)+7 = 7/5+7 = 1.4+7 = 8.4
+			expectedResult: 8.4,
 			expectedError:  false,
-			expectedType:   "Invalid input",
+			expectedType:   "Not an integer",
 		},
 		// エラーケース - 長さが違う
 		{
@@ -54,6 +47,16 @@ func TestFormulaCalculator_EvaluateFormula(t *testing.T) {
 		{
 			name:          "Invalid length - too long",
 			expression:    "12+34+5+",
+			expectedError: true,
+		},
+		{
+			name:          "Invalid length - 6 characters (too short)",
+			expression:    "19+2*+",
+			expectedError: true,
+		},
+		{
+			name:          "Invalid length - 5 characters (too short)",
+			expression:    "34+5/",
 			expectedError: true,
 		},
 		// エラーケース - 無効な文字
