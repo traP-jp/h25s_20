@@ -91,8 +91,8 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 		// WebSocketでルーム全員に通知
 		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerReady, player.ID, player.UserName)
 
-		// 全員準備完了チェック
-		if updatedRoom.AreAllPlayersReady() && len(updatedRoom.Players) > 0 {
+		// 全員準備完了チェック（接続中のプレイヤーのみ）
+		if updatedRoom.AreAllConnectedPlayersReady() {
 			h.WebSocketHandler.SendPlayerAllReadyEventToRoom(roomId, "All players are ready!")
 			// ルームがクローズされたことを通知
 			if !updatedRoom.IsOpened {
@@ -112,8 +112,8 @@ func (h *Handler) PostRoomsRoomIdActions(c echo.Context, roomId int) error {
 
 		h.WebSocketHandler.SendPlayerEventToRoom(roomId, wsManager.EventPlayerCanceled, player.ID, player.UserName)
 
-		// 全員準備完了状態から変更されたかチェック（必要に応じて通知）
-		if !updatedRoom.AreAllPlayersReady() {
+		// 全員準備完了状態から変更されたかチェック（接続中のプレイヤーのみ）
+		if !updatedRoom.AreAllConnectedPlayersReady() {
 			// 必要に応じて「準備完了状態解除」イベントを送信
 			// 現在は特別な処理なし
 		}

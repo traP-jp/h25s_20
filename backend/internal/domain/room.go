@@ -311,6 +311,8 @@ func (r *Room) TransitionTo(newState RoomState) error {
 }
 
 // AreAllPlayersReady checks if all players in the room are ready
+// Note: This method checks ALL players including disconnected ones.
+// For checking only connected players, use areConnectedPlayersReady() in usecase layer.
 func (r *Room) AreAllPlayersReady() bool {
 	if len(r.Players) == 0 {
 		return false
@@ -321,6 +323,24 @@ func (r *Room) AreAllPlayersReady() bool {
 		}
 	}
 	return true
+}
+
+// AreAllConnectedPlayersReady checks if all connected players in the room are ready
+func (r *Room) AreAllConnectedPlayersReady() bool {
+	connectedCount := 0
+	readyCount := 0
+
+	for _, player := range r.Players {
+		if player.IsConnected {
+			connectedCount++
+			if player.IsReady {
+				readyCount++
+			}
+		}
+	}
+
+	// 接続中のプレイヤーが1人以上いて、全員がREADY
+	return connectedCount > 0 && connectedCount == readyCount
 }
 
 // AreAllPlayersClosedResult checks if all players have closed the result display
