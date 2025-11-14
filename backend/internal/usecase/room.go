@@ -47,11 +47,14 @@ func (r *RoomUsecase) GetRooms() []models.Room {
 	var rooms []models.Room
 	for _, domainRoom := range r.rooms {
 		// domain.RoomからAPI用のmodels.Roomに変換
-		users := make([]models.User, len(domainRoom.Players))
-		for i, player := range domainRoom.Players {
-			users[i] = models.User{
-				Username: player.UserName,
-				IsReady:  player.IsReady,
+		// 接続中のプレイヤーのみをフィルタリング
+		var users []models.User
+		for _, player := range domainRoom.Players {
+			if player.IsConnected {
+				users = append(users, models.User{
+					Username: player.UserName,
+					IsReady:  player.IsReady,
+				})
 			}
 		}
 
@@ -117,6 +120,10 @@ func (r *RoomUsecase) UpdatePlayerReadyStatus(roomID int, playerID int, isReady 
 	playerFound := false
 	for i, player := range room.Players {
 		if player.ID == playerID {
+			// 切断されたプレイヤーの状態は更新できない
+			if !player.IsConnected {
+				return nil, fmt.Errorf("player with ID %d is disconnected and cannot update ready status", playerID)
+			}
 			room.Players[i].IsReady = isReady
 			playerFound = true
 			break
@@ -127,12 +134,12 @@ func (r *RoomUsecase) UpdatePlayerReadyStatus(roomID int, playerID int, isReady 
 		return nil, fmt.Errorf("player with ID %d not found in room %d", playerID, roomID)
 	}
 
-	// 全員がREADYになったら状態を更新
-	if room.AreAllPlayersReady() && room.State == domain.StateWaitingForPlayers {
+	// 接続中のプレイヤー全員がREADYになったら状態を更新
+	if r.areConnectedPlayersReady(room) && room.State == domain.StateWaitingForPlayers {
 		room.TransitionTo(domain.StateAllReady)
 		// 全員がreadyになったらroomをクローズ
 		room.IsOpened = false
-	} else if !room.AreAllPlayersReady() && room.State == domain.StateAllReady {
+	} else if !r.areConnectedPlayersReady(room) && room.State == domain.StateAllReady {
 		room.TransitionTo(domain.StateWaitingForPlayers)
 		// 状態がWaitingForPlayersに戻った場合、部屋を再度開放
 		room.IsOpened = true
@@ -249,8 +256,8 @@ func (r *RoomUsecase) RemovePlayerFromRoom(roomID int, playerID int) (*domain.Ro
 		room.StreakCount = 0
 		// プレイヤーリストは既に空なので、個々のリセットは不要
 	} else {
-		// まだプレイヤーがいる場合、READY状態をチェック
-		if !room.AreAllPlayersReady() && room.State == domain.StateAllReady {
+		// まだプレイヤーがいる場合、READY状態をチェック（接続中のプレイヤーのみ）
+		if !r.areConnectedPlayersReady(room) && room.State == domain.StateAllReady {
 			room.TransitionTo(domain.StateWaitingForPlayers)
 			// 状態がWaitingForPlayersに戻った場合、部屋を再度開放
 			room.IsOpened = true
